@@ -372,6 +372,7 @@ main{max-width:980px;margin:0 auto;padding:12px 12px 120px}
   <div class="f"><label for="lCode">Site code</label><input id="lCode" autocomplete="off" autocapitalize="off" placeholder="Site code"></div>
   <p class="note" id="lErr"></p>
   <div class="btns"><button class="primary" id="lGo">Sign in</button></div>
+  <p class="note" style="margin-top:12px">Job: <span id="lJobId"></span> · <button class="ghost" id="lJobBtn" style="min-height:0;padding:6px 10px">Use a different job link</button></p>
 </div>
 
 <div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Photo viewer">
@@ -554,6 +555,7 @@ const store={
 function showLogin(msg){if(!JOB){showJobs(true);return}
   $("lName").value=me?me.name:(localStorage.getItem("wtc-name")||"");$("lCode").value="";$("lErr").textContent=msg||"";
   $("lTitle").textContent="Sign in"+(S.job?" — "+(S.short||S.job):"");$("lJob").textContent=S.job?S.job+". ":"";
+  $("lJobId").textContent=JOB.slice(0,14)+"…"+JOB.slice(-6);
   openS("lSheet");setTimeout(()=>$($("lName").value?"lCode":"lName").focus(),230);
   if(!S.job&&navigator.onLine)api("info").then(j=>{if(j.settings){applySettings(j.settings);$("lTitle").textContent="Sign in — "+(S.short||S.job);$("lJob").textContent=S.job+". "}}).catch(()=>{})}
 $("lGo").onclick=async()=>{
@@ -767,6 +769,8 @@ function showJobs(must){
 $("jList").onclick=e=>{const b=e.target.closest("[data-open]");if(b)location.href=jobUrl(b.dataset.open)};
 $("jGo").onclick=()=>{const id=jobFromText($("jLink").value);if(!id){$("jErr").textContent="That doesn't look like a job link. It should contain ?job= or end in /exec.";return}location.href=jobUrl(id)};
 $("mJob").onclick=()=>showJobs(false);
+$("lJobBtn").onclick=()=>showJobs(false);
+$("jClose").onclick=()=>{SHEETS.forEach(x=>$(x).classList.remove("on"));$("scrim").classList.remove("on");if(!me)showLogin()};
 $("mShare").onclick=async()=>{const u=jobUrl(JOB);$("shLink").value=u;$("shQR").innerHTML="";openS("shSheet");
   try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js","QRCode");new QRCode($("shQR"),{text:u,width:220,height:220,correctLevel:QRCode.CorrectLevel.M})}catch(e){$("shQR").textContent="QR needs signal the first time."}};
 $("shCopy").onclick=async()=>{try{await navigator.clipboard.writeText($("shLink").value);toast("Link copied")}catch(e){$("shLink").select();toast("Press and hold to copy")}};
