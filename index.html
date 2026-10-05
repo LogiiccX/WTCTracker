@@ -1,0 +1,941 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Work to Complete</title>
+<meta name="theme-color" content="#16263B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Work to Complete">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#16263B; --steel:#3D5A73; --brass:#B8862F;
+  --bg:#F5F6F8; --surface:#FFFFFF; --ink:#16263B; --muted:#5B6B7C; --line:#D9DEE4;
+  --open:#B23A2E; --wip:#3D5A73; --ready:#B8862F; --done:#2F7A4D;
+  --chip:#E9EDF1;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#0F1A29; --surface:#16263B; --ink:#E8ECF1; --muted:#9AA9B8; --line:#2A3D55; --chip:#22364E;
+  --open:#E06A5C; --done:#5CB884; --wip:#8FB0CC;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1A29; --surface:#16263B; --ink:#E8ECF1; --muted:#9AA9B8; --line:#2A3D55; --chip:#22364E;
+  --open:#E06A5C; --done:#5CB884; --wip:#8FB0CC;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+h1,h2,h3,.cond{font-family:"Barlow Semi Condensed","Arial Narrow",Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+
+/* header */
+header{background:var(--navy);color:#fff;padding:14px 16px 0;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.hrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;max-width:980px;margin:0 auto}
+h1{margin:0;font-size:24px;font-weight:700;letter-spacing:.2px}
+h1 small{display:block;font:500 13px Inter,sans-serif;color:#AFC0D2;letter-spacing:0}
+.sync{font-size:12px;color:#AFC0D2;white-space:nowrap}
+.sync b{display:inline-block;width:8px;height:8px;border-radius:50%;background:#7A8A9A;margin-right:6px;vertical-align:1px}
+.sync.live b{background:#5CB884}
+.tally{display:flex;max-width:980px;margin:12px auto 0;border-top:1px solid #2A3D55}
+.tally button{flex:1;background:none;border:0;color:#AFC0D2;padding:10px 4px 12px;text-align:left;border-bottom:3px solid transparent}
+.tally button .n{display:block;font:700 26px/1 "Barlow Semi Condensed",sans-serif;color:#fff}
+.tally button .l{font-size:12px}
+.tally button[aria-pressed="true"]{border-bottom-color:var(--brass);color:#fff}
+
+main{max-width:980px;margin:0 auto;padding:12px 12px 120px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.filters select,.filters input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-height:42px}
+.filters input{flex:1 1 180px}
+.tools{display:flex;gap:8px;margin-left:auto}
+.ghost{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 12px;min-height:42px}
+
+.group{margin:18px 0 6px}
+.group h2{margin:0 0 6px;font-size:19px;font-weight:700;display:flex;gap:8px;align-items:baseline}
+.group h2 span{font:500 13px Inter,sans-serif;color:var(--muted)}
+.room{font:600 13px Inter,sans-serif;color:var(--muted);margin:12px 0 6px}
+
+.item{display:grid;grid-template-columns:6px 1fr auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.item .bar{background:var(--open)}
+.item[data-s="wip"] .bar{background:var(--wip)}
+.item[data-s="ready"] .bar{background:var(--ready)}
+.item[data-s="done"] .bar{background:var(--done)}
+.item .body{padding:10px 12px;min-width:0;border:0;background:none;text-align:left;width:100%}
+.item .desc{font-weight:500}
+.item[data-s="done"] .desc{text-decoration:line-through;color:var(--muted)}
+.meta{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:5px;font-size:12.5px;color:var(--muted)}
+.meta .trade{font-weight:600;color:var(--ink)}
+.hot{color:var(--open);font-weight:600}
+.thumbs{display:flex;gap:6px;margin-top:7px}
+.thumb{width:52px;height:52px;border-radius:6px;object-fit:cover;display:block;cursor:zoom-in;border:1px solid var(--line)}
+.act{align-self:center;margin:8px 10px 8px 0;border:0;border-radius:8px;padding:10px 12px;min-width:92px;font-weight:600;font-size:13.5px;background:var(--chip);color:var(--ink)}
+.act.go{background:var(--brass);color:#fff}
+
+.empty{text-align:center;padding:48px 16px;color:var(--muted)}
+.empty strong{display:block;color:var(--ink);font:600 20px "Barlow Semi Condensed",sans-serif;margin-bottom:4px}
+
+.fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--brass);color:#fff;border:0;border-radius:14px;padding:16px 22px;font:700 18px "Barlow Semi Condensed",sans-serif;box-shadow:0 6px 18px rgba(22,38,59,.35);z-index:6}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,18,30,.55);display:none;z-index:20}
+.scrim.on{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:92%;overflow:auto;background:var(--surface);border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));z-index:21;transform:translateY(105%);transition:transform .22s ease;max-width:640px;margin:0 auto}
+.sheet.on{transform:none}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+.sheet h3{margin:0 0 12px;font-size:22px}
+.f{margin-bottom:12px}
+.f label,.f .lab{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px}
+.f input,.f select,.f textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;min-height:46px}
+.f textarea{min-height:84px;resize:vertical}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:10px 12px;min-height:44px;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btns{display:flex;gap:10px;margin-top:6px}
+.primary{flex:1;background:var(--brass);color:#fff;border:0;border-radius:10px;padding:14px;font:700 18px "Barlow Semi Condensed",sans-serif}
+.danger{background:none;border:1px solid var(--open);color:var(--open);border-radius:10px;padding:12px 14px}
+.photo{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pslot{position:relative}
+.pslot img{width:76px;height:76px;object-fit:cover;border-radius:8px;display:block;cursor:zoom-in;border:1px solid var(--line)}
+.pslot .x{position:absolute;top:-8px;right:-8px;width:28px;height:28px;border-radius:50%;border:2px solid var(--surface);background:var(--open);color:#fff;font-weight:700;line-height:1;padding:0}
+.padd{display:inline-flex;align-items:center;justify-content:center;width:76px;height:76px;border:2px dashed var(--line);border-radius:8px;font-size:12.5px;text-align:center;color:var(--muted);cursor:pointer;padding:4px}
+.viewer{position:fixed;inset:0;background:#05090F;z-index:40;display:none;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);touch-action:pan-y}
+.viewer.on{display:flex}
+.vbar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;color:#fff;gap:10px}
+.vbar span{font-size:14px;color:#AFC0D2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.num{font:600 12.5px "Barlow Semi Condensed",sans-serif;color:var(--steel);margin-right:6px;letter-spacing:.3px}
+.vbar .vb{display:flex;gap:8px}
+.vbar button{background:#16263B;color:#fff;border:0;border-radius:10px;padding:10px 16px;font-weight:600}
+.vimg{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative}
+.vimg img{max-width:100%;max-height:100%;object-fit:contain}
+.vnav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(22,38,59,.8);color:#fff;border:0;border-radius:50%;width:48px;height:48px;font-size:22px}
+.vnav.p{left:10px}.vnav.n{right:10px}
+.vcount{text-align:center;color:#AFC0D2;font-size:13px;padding:10px}
+.hist{font-size:12.5px;color:var(--muted);margin-top:10px}
+.tlist{list-style:none;margin:0 0 12px;padding:0}
+.tlist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.tlist li button{background:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--open)}
+.tadd{display:flex;gap:8px}.tadd input{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;min-height:46px}
+.tadd button{background:var(--brass);color:#fff;border:0;border-radius:8px;padding:0 16px;font-weight:600}
+.note{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:30;display:none}
+.ro .fab,.ro .act,.ro .edit-only{display:none}
+
+/* print: minimal ink posting sheet */
+/* added: badges, sheets, tables */
+.badge{display:inline-block;border-radius:5px;padding:1px 6px;font-size:11.5px;font-weight:600;border:1px solid currentColor}
+.age3{color:var(--brass)}.age7{color:var(--open)}
+.gate{color:var(--steel)}
+:root[data-theme="dark"] .gate{color:#8FB0CC}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .gate{color:#8FB0CC}}
+.await{align-self:center;margin:8px 10px 8px 0;font-size:12.5px;color:var(--muted);min-width:92px;text-align:center}
+.pin{display:flex;align-items:center;gap:8px;background:var(--navy);color:#fff;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:14px}
+.pin[hidden]{display:none}
+.obar{background:var(--brass)}
+.phimg{background:var(--chip)}
+.obar button{border-color:#fff}
+@media (max-width:640px){.filters{display:grid;grid-template-columns:1fr 1fr}.filters select{min-width:0;width:100%}.filters input{grid-column:1/-1}.tools{grid-column:1/-1;margin:0}.tools button{flex:1}}
+.pin button{margin-left:auto;background:none;border:1px solid #AFC0D2;color:#fff;border-radius:6px;padding:6px 10px}
+.menu{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.menu button{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px 12px;text-align:left;min-height:64px}
+.menu button b{display:block;font:700 17px "Barlow Semi Condensed",sans-serif}
+.menu button span{font-size:12.5px;color:var(--muted)}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:6px 6px;border-bottom:1px solid var(--line)}
+.tbl td{padding:10px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl td.n{text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.tbl tr[data-trade]{cursor:pointer}
+.tbl .sm{font-size:12px;color:var(--muted)}
+.scroll{overflow-x:auto}
+.chk{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.chk input{width:22px;height:22px}
+.hlog{list-style:none;padding:0;margin:6px 0 0;font-size:12.5px;color:var(--muted)}
+.hlog li{padding:3px 0}
+.map{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center;margin-bottom:12px;font-size:14px}
+.map select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:40px}
+.sheet.wide{max-width:820px}
+.gc-only{} .sub .gc-only,.ro .gc-only{display:none!important}
+
+#printArea{display:none}
+@media print{
+  @page{margin:12mm}
+  body{background:#fff;color:#000;font-size:11pt}
+  header,main,.fab,.scrim,.sheet,.toast,.viewer{display:none!important}
+  #printArea{display:block}
+  .pg{page-break-after:always}
+  .pg:last-child{page-break-after:auto}
+  .ph{display:flex;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:4px;margin-bottom:8px}
+  .ph h2{margin:0;font-size:18pt}
+  .ph div{font-size:9pt;text-align:right}
+  table{width:100%;border-collapse:collapse}
+  th,td{border:1px solid #000;padding:6px 5px;vertical-align:top;font-size:10pt}
+  th{text-align:left;font-weight:600}
+  td.box{width:16mm}
+  td.c{text-align:center}
+  .sign{margin-top:10mm;display:grid;grid-template-columns:1fr 1fr;gap:10mm;font-size:9pt}
+  .sign div{border-top:1px solid #000;padding-top:2px}
+  .qrgrid{display:grid;grid-template-columns:1fr 1fr;gap:8mm}
+  .qrc{border:1.5px solid #000;padding:6mm;text-align:center;page-break-inside:avoid}
+  .qrc img{width:48mm;height:48mm}
+  .qrc h3{margin:3mm 0 1mm;font:700 20pt "Barlow Semi Condensed",Arial,sans-serif}
+  .qrc p{margin:0;font-size:9pt}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1>Work to Complete<small id="jobName"></small></h1>
+    <div class="sync" id="sync"><b></b>Starting…</div>
+  </div>
+  <div class="tally" id="tally"></div>
+</header>
+
+<main>
+  <div class="pin obar" id="obar" hidden><span id="obTxt"></span><button id="obGo">Send now</button></div>
+  <div class="pin" id="pin" hidden><span id="pinTxt"></span><button id="pinX">Show all rooms</button></div>
+  <div class="filters">
+    <select id="fB" aria-label="Area"></select>
+    <select id="fT" aria-label="Trade"></select>
+    <select id="fO" aria-label="Owner"></select>
+    <select id="fG" aria-label="Inspection tag"></select>
+    <select id="fS" aria-label="Sort"><option value="loc">Sort by location</option><option value="age">Oldest first</option></select>
+    <input id="fQ" type="search" placeholder="Search room, item, or item #" aria-label="Search">
+    <div class="tools">
+      <button class="ghost" id="rollBtn">Trade rollup</button>
+      <button class="ghost" id="printBtn">Print sheets</button>
+      <button class="ghost" id="moreBtn">More</button>
+    </div>
+  </div>
+  <div id="list"></div>
+</main>
+
+<button class="fab" id="addBtn">+ Add item</button>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- item -->
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sTitle">
+  <h3 id="sTitle">New item</h3>
+  <div class="f"><span class="lab" data-area>Building</span><div class="seg" id="sB"></div></div>
+  <div class="row2">
+    <div class="f"><label for="sL">Level</label><select id="sL"></select></div>
+    <div class="f"><label for="sR">Room / area</label><input id="sR" list="roomList" placeholder="e.g. 3104 or Corridor C"><datalist id="roomList"></datalist></div>
+  </div>
+  <div class="f"><label for="sT">Trade responsible</label><select id="sT"></select></div>
+  <div class="f"><label for="sD">What needs done</label><textarea id="sD" placeholder="e.g. Touch up paint at door frame, north wall"></textarea></div>
+  <div class="f"><span class="lab">Owner (building super)</span><div class="seg" id="sO"></div></div>
+  <div class="f"><span class="lab">Must be closed before</span><div class="seg" id="sG"></div></div>
+  <div class="row2">
+    <div class="f"><span class="lab">Priority</span><div class="seg" id="sP"></div></div>
+    <div class="f"><label for="sDue">Due (optional)</label><input id="sDue" type="date"></div>
+  </div>
+  <div class="f"><label for="sPS">ProjectSight punch # (once entered there)</label><input id="sPS" inputmode="numeric" placeholder="e.g. 145"></div>
+  <div class="f"><span class="lab" id="pLab">Photos (optional, up to 3)</span>
+    <div class="photo" id="pStrip"></div>
+    <input id="sFile" type="file" accept="image/*" capture="environment" hidden>
+  </div>
+  <div class="f" id="sStatusWrap" hidden><span class="lab">Status</span><div class="seg" id="sS"></div></div>
+  <div class="btns">
+    <button class="primary" id="sSave">Add item</button>
+    <button class="danger gc-only" id="sDel" hidden>Delete</button>
+  </div>
+  <div class="hist" id="sHist"></div>
+</div>
+
+<!-- trades -->
+<div class="sheet" id="tSheet" role="dialog" aria-modal="true" aria-labelledby="tTitle">
+  <h3 id="tTitle">Trades</h3>
+  <div class="tadd"><input id="tNew" placeholder="Company or trade name, e.g. Otis Elevator" aria-label="New trade name"><button id="tAdd">Add</button></div>
+  <p class="note" style="margin-top:12px">Trades you've added are listed below. Removing one hides it from the picker; existing items keep their trade.</p>
+  <ul class="tlist" id="tList"></ul>
+  <div class="btns"><button class="primary" data-close>Done</button></div>
+</div>
+
+<!-- owners -->
+<div class="sheet" id="oSheet" role="dialog" aria-modal="true" aria-labelledby="oTitle">
+  <h3 id="oTitle">Owners</h3>
+  <div class="tadd"><input id="oNew" placeholder="Name, e.g. Marcus or Ken / Jay" aria-label="New owner name"><button id="oAdd">Add</button></div>
+  <p class="note" style="margin-top:12px">Owners you've added are listed below. Removing one hides it from the picker; items already assigned keep that owner until you change them.</p>
+  <ul class="tlist" id="oList"></ul>
+  <div class="btns"><button class="primary" data-close>Done</button></div>
+</div>
+
+<!-- more -->
+<div class="sheet" id="mSheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <h3 id="mTitle">More</h3>
+  <div class="menu">
+    <button id="mQR"><b>Room QR codes</b><span>Print a code for each room door</span></button>
+    <button id="mRep"><b>Verified report</b><span>What was closed, when, by whom</span></button>
+    <button id="mImp" class="gc-only"><b>Import list</b><span>Excel or CSV from ProjectSight</span></button>
+    <button id="mCsv"><b>Export CSV</b><span>Current filter, with photo file names</span></button>
+    <button id="mZip" class="gc-only"><b>Photo folder</b><span>All photos in Google Drive, named by item</span></button>
+    <button id="mGs" class="gc-only"><b>Google Sheet</b><span>The live list, ready for ProjectSight</span></button>
+    <button id="mShare" class="gc-only"><b>Invite the crew</b><span>Job link + sign-in QR code</span></button>
+    <button id="mJob"><b>Switch job</b><span id="mJobTxt">Other jobs on this phone</span></button>
+    <button id="mMe"><b>Sign out</b><span id="mMeTxt">Change name or site code</span></button>
+    <button id="mTr" class="gc-only"><b>Trades</b><span>Add or remove companies</span></button>
+    <button id="mOw" class="gc-only"><b>Owners</b><span>Add or remove supers / owners</span></button>
+  </div>
+  <p class="note" id="roleNote"></p>
+  <div class="btns"><button class="primary" data-close>Close</button></div>
+</div>
+
+<!-- rollup -->
+<div class="sheet wide" id="rSheet" role="dialog" aria-modal="true" aria-labelledby="rTitle">
+  <h3 id="rTitle">Trade rollup</h3>
+  <p class="note" id="rSub"></p>
+  <div class="scroll"><table class="tbl" id="rTbl"></table></div>
+  <div class="btns" style="margin-top:12px"><button class="primary" id="rPrint">Print rollup</button><button class="ghost" data-close>Close</button></div>
+</div>
+
+<!-- QR -->
+<div class="sheet" id="qSheet" role="dialog" aria-modal="true" aria-labelledby="qTitle">
+  <h3 id="qTitle">Room QR codes</h3>
+  <p class="note">Scanning a code opens this tracker showing just that room. Rooms come from items already logged; add any others below.</p>
+  <div class="row2">
+    <div class="f"><label for="qB" data-area>Building</label><select id="qB"></select></div>
+    <div class="f"><label for="qL">Level</label><select id="qL"></select></div>
+  </div>
+  <div class="tadd" style="margin-bottom:12px"><input id="qR" placeholder="Room / area, e.g. 3104" aria-label="Room"><button id="qAdd">Add room</button></div>
+  <div class="chk" style="font-weight:600"><input type="checkbox" id="qAll" checked><label for="qAll">Select all</label></div>
+  <div id="qList"></div>
+  <div class="btns" style="margin-top:12px"><button class="primary" id="qPrint">Print QR codes</button><button class="ghost" data-close>Close</button></div>
+</div>
+
+<!-- verified report -->
+<div class="sheet" id="vrSheet" role="dialog" aria-modal="true" aria-labelledby="vrTitle">
+  <h3 id="vrTitle">Verified report</h3>
+  <p class="note">Lists items verified in the date range, using the building, trade, owner, and tag filters on the main screen.</p>
+  <div class="row2">
+    <div class="f"><label for="vrFrom">From</label><input id="vrFrom" type="date"></div>
+    <div class="f"><label for="vrTo">To</label><input id="vrTo" type="date"></div>
+  </div>
+  <p class="note" id="vrCount"></p>
+  <div class="btns"><button class="primary" id="vrPrint">Print report</button><button class="ghost" data-close>Close</button></div>
+</div>
+
+<!-- import -->
+<div class="sheet wide" id="iSheet" role="dialog" aria-modal="true" aria-labelledby="iTitle">
+  <h3 id="iTitle">Import list</h3>
+  <div id="iStart">
+    <p class="note">Pick an Excel (.xlsx) or CSV export — a ProjectSight punch item export works. You'll see how the columns line up before anything is added.</p>
+    <label class="primary" style="display:block;text-align:center" for="iFile">Choose file</label>
+    <input id="iFile" type="file" accept=".xlsx,.xls,.csv" hidden>
+  </div>
+  <div id="iMapWrap" hidden>
+    <p class="note" id="iInfo"></p>
+    <div class="map" id="iMap"></div>
+    <div class="row2">
+      <div class="f"><label for="iDefB"><span data-area>Building</span> if not in file</label><select id="iDefB"></select></div>
+      <div class="f"><label for="iDefT">Trade if not in file</label><select id="iDefT"></select></div>
+    </div>
+    <div class="scroll"><table class="tbl" id="iPrev"></table></div>
+    <div class="btns" style="margin-top:12px"><button class="primary" id="iGo">Import</button><button class="ghost" data-close>Cancel</button></div>
+  </div>
+</div>
+
+<!-- job picker -->
+<div class="sheet" id="jSheet" role="dialog" aria-modal="true" aria-labelledby="jTitle">
+  <h3 id="jTitle">Choose a job</h3>
+  <ul class="tlist" id="jList"></ul>
+  <div class="f"><label for="jLink">Add a job — paste the job link from your project team</label><input id="jLink" autocomplete="off" autocapitalize="off" placeholder="https://…?job=…"></div>
+  <p class="note" id="jErr"></p>
+  <div class="btns"><button class="primary" id="jGo">Open job</button><button class="ghost" data-close id="jClose">Close</button></div>
+</div>
+
+<!-- invite -->
+<div class="sheet" id="shSheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <h3 id="shTitle">Invite the crew</h3>
+  <p class="note">Send this link, or have them scan the code. They sign in with their name and the site code (staff code or crew code from the Settings tab).</p>
+  <div class="f"><input id="shLink" readonly></div>
+  <div class="btns" style="margin-bottom:12px"><button class="ghost" id="shCopy">Copy link</button><button class="ghost" id="shPrint">Print sign-in QR</button></div>
+  <div id="shQR" style="display:flex;justify-content:center"></div>
+  <div class="btns" style="margin-top:12px"><button class="primary" data-close>Done</button></div>
+</div>
+
+<!-- sign in -->
+<div class="sheet" id="lSheet" role="dialog" aria-modal="true" aria-labelledby="lTitle">
+  <h3 id="lTitle">Sign in</h3>
+  <p class="note"><span id="lJob"></span>Your name shows on items you add and verify. Get the site code from the project team.</p>
+  <div class="f"><label for="lName">Your name</label><input id="lName" autocomplete="name" placeholder="e.g. Scott Miller"></div>
+  <div class="f"><label for="lCode">Site code</label><input id="lCode" autocomplete="off" autocapitalize="off" placeholder="Site code"></div>
+  <p class="note" id="lErr"></p>
+  <div class="btns"><button class="primary" id="lGo">Sign in</button></div>
+</div>
+
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="vbar"><span id="vCap"></span><div class="vb"><button id="vSave" hidden>Save photo</button><button id="vClose">Close</button></div></div>
+  <div class="vimg" id="vImgWrap"><img id="vImg" alt="Item photo, full size"><button class="vnav p" id="vPrev" aria-label="Previous photo">‹</button><button class="vnav n" id="vNext" aria-label="Next photo">›</button></div>
+  <div class="vcount" id="vCount"></div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="printArea"></div>
+<script>
+/* Work to Complete — job template (GitHub Pages + Google Apps Script). One app serves every job; each job is its own Google Sheet. */
+(function(){
+/* ===== The job comes from the link: index.html?job=<Apps Script deployment id> ===== */
+let BLDGS=[],LEVELS=[],BASE_TRADES=["Other"],OWNER_BY_BLDG={},OWNERS=["Unassigned"],GATES={"":"Nothing specific"};
+let S={job:"",short:"",gc:"GC",prefix:"WTC",areaLabel:"Building"};
+const areaWord=()=>S.areaLabel||"Area";
+const areasWord=()=>{const w=areaWord().toLowerCase();return /s$/.test(w)?w:w+"s"};
+function applySettings(x){
+  if(!x)return;S=Object.assign({},S,x);
+  BLDGS=(x.areas&&x.areas.length?x.areas:["General"]);
+  LEVELS=(x.levels&&x.levels.length?x.levels:["N/A"]);
+  BASE_TRADES=[...(x.trades||[]).filter(t=>t!=="Other"),"Other"];
+  OWNERS=[...(x.owners||[]).filter(o=>o!=="Unassigned"),"Unassigned"];
+  OWNER_BY_BLDG=x.ownerByArea||{};
+  GATES={"":"Nothing specific"};(x.tags||[]).forEach(t=>GATES[t]=t);
+  document.title=(S.short?S.short+" · ":"")+"Work to Complete";
+  $("jobName").textContent=S.job||"";
+  document.querySelectorAll("[data-area]").forEach(el=>el.textContent=areaWord());
+  $("fB").setAttribute("aria-label",areaWord());
+  keepOpts($("fB"),BLDGS,"All "+areasWord());
+  keepOpts($("fG"),[["any","Any inspection tag"],...Object.keys(GATES).filter(Boolean).map(t=>[t,t])],"All items");
+  $("fG").hidden=Object.keys(GATES).length<2;
+}
+const ST={open:"Open",wip:"Working",ready:"Ready to verify",done:"Verified"};
+const NEXT={open:["wip","Start"],wip:["ready","Mark ready"],ready:["done","Verify"],done:["open","Reopen"]};
+const MAXP=3;
+const JOB_RX=/^[A-Za-z0-9_-]{20,120}$/;
+const PH_BLANK="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'/%3E";
+const $=s=>document.getElementById(s);
+
+/* ---------- local persistence ---------- */
+function jobFromText(t){t=String(t||"").trim();let m=t.match(/[?&]job=([A-Za-z0-9_-]+)/)||t.match(/script\.google\.com\/macros\/s\/([A-Za-z0-9_-]+)/)||t.match(/^([A-Za-z0-9_-]{20,120})$/);return m&&JOB_RX.test(m[1])?m[1]:""}
+const JOB=jobFromText(location.search)||localStorage.getItem("wtc-lastjob")||"";
+const API_URL=JOB?`https://script.google.com/macros/s/${JOB}/exec`:"";
+const K={me:`wtc:${JOB}:me`,cache:`wtc:${JOB}:cache`,outbox:`wtc:${JOB}:outbox`};
+const lsGet=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
+const lsSet=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+let me=lsGet(K.me,null);                      // {name, code, role, folderUrl, sheetUrl}
+let cache=lsGet(K.cache,{since:0,items:{},config:{trades:[],owners:[]},settings:null,syncedAt:0});
+let outbox=lsGet(K.outbox,[]);if(!Array.isArray(outbox))outbox=[];
+const saveCache=()=>{try{lsSet(K.cache,cache)}catch(e){}};
+const saveOutbox=()=>lsSet(K.outbox,outbox);
+
+let items=[],view="active",editing=null,draft={},roomPin=null,sending=false,pulling=false;
+const role=()=>me?me.role:"none";
+const isGC=()=>role()==="gc";
+const canWrite=()=>role()==="gc"||role()==="sub";
+const customTrades=()=>cache.config.trades||[];
+const customOwners=()=>cache.config.owners||[];
+
+/* ---------- helpers ---------- */
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=t=>t?new Date(t).toLocaleDateString(undefined,{month:"short",day:"numeric"}):"";
+const fmtT=t=>t?new Date(t).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
+const days=t=>Math.floor((Date.now()-(t||Date.now()))/864e5);
+const ageTxt=d=>d<1?"today":d===1?"1 day":d+" days";
+const tag=i=>i&&i.num?(S.prefix||"WTC")+"-"+String(i.num).padStart(4,"0"):"";
+const tagOrPending=i=>tag(i)||"Not sent yet";
+const safe=v=>String(v||"").replace(/[^A-Za-z0-9-]+/g,"");
+const photosOf=i=>Array.isArray(i.photos)?i.photos.filter(Boolean):[];
+const photoName=(i,k)=>`${tag(i)}${i.ps?"_PS-"+safe(i.ps):""}_${k+1}.jpg`;
+const ownerOf=i=>i.owner||OWNER_BY_BLDG[i.bldg]||"Unassigned";
+const roomKey=(b,l,r)=>[b,l,r].join("|");
+const newId=()=>"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no({code:"timeout"}),ms))]);
+const logAdd=(log,a)=>[...(Array.isArray(log)?log:[]),{t:Date.now(),by:me?me.name:"",a}].slice(-30);
+function toast(m){const t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",2600)}
+function opts(sel,arr,first){sel.innerHTML=(first?`<option value="">${first}</option>`:"")+arr.map(v=>Array.isArray(v)?`<option value="${esc(v[0])}">${esc(v[1])}</option>`:`<option>${esc(v)}</option>`).join("")}
+function keepOpts(sel,arr,first){const v=sel.value;opts(sel,arr,first);sel.value=v;if(sel.value!==v)sel.value=""}
+function seg(el,arr,val,cb,labels){el.innerHTML=arr.map((v,i)=>`<button type="button" data-v="${esc(v)}" aria-pressed="${v===val}">${esc(labels?labels[i]:v)}</button>`).join("");
+  el.onclick=e=>{const b=e.target.closest("button[data-v]");if(!b)return;[...el.querySelectorAll("button[data-v]")].forEach(c=>c.setAttribute("aria-pressed",c===b));cb(b.dataset.v)}}
+function loadScript(src,g){return window[g]?Promise.resolve():new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=src;sc.onload=ok;sc.onerror=()=>no(new Error("load"));document.head.appendChild(sc)})}
+function saveFile(name,data,type){const blob=data instanceof Blob?data:new Blob([data],{type:type||"text/plain"});const u=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
+function dataURLtoBlob(u){const [h,b]=u.split(",");const bin=atob(b);const a=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)a[k]=bin.charCodeAt(k);return new Blob([a],{type:(h.match(/:(.*?);/)||[])[1]||"image/jpeg"})}
+
+/* ---------- API (Apps Script) ---------- */
+const configured=()=>!!JOB;
+async function api(action,body,ms){
+  if(!configured())throw{code:"not_configured"};
+  const payload=Object.assign({action,code:me&&me.code,name:me&&me.name},body||{});
+  let r;try{r=await withTimeout(fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)}),ms||25000)}
+  catch(e){throw{code:"offline"}}
+  if(!r.ok)throw{code:"offline"};
+  let j;try{j=await r.json()}catch(e){throw{code:"offline"}}
+  if(!j.ok)throw{code:j.code||"error",message:j.error||""};
+  return j;
+}
+
+/* ---------- photos: Drive refs fetched on demand, kept on the phone ---------- */
+const idb=(()=>{let dbp;const open=()=>dbp||(dbp=new Promise((ok,no)=>{const r=indexedDB.open("wtc-photos",1);r.onupgradeneeded=()=>r.result.createObjectStore("p");r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}));
+  return{async get(k){try{const d=await open();return await new Promise(ok=>{const q=d.transaction("p").objectStore("p").get(k);q.onsuccess=()=>ok(q.result||null);q.onerror=()=>ok(null)})}catch(e){return null}},
+    async set(k,v){try{const d=await open();d.transaction("p","readwrite").objectStore("p").put(v,k)}catch(e){}}}})();
+const mem={},inflight={};
+async function loadPhoto(ref){
+  if(!ref)return null;if(!ref.startsWith("drive:"))return ref;if(mem[ref])return mem[ref];
+  let v=await idb.get(ref);
+  if(!v&&navigator.onLine&&me){if(!inflight[ref])inflight[ref]=api("photo",{id:ref.slice(6)}).then(j=>j.data).catch(()=>null);v=await inflight[ref];delete inflight[ref];if(v)idb.set(ref,v)}
+  if(v)mem[ref]=v;return v;
+}
+function hydrate(root){root.querySelectorAll("img[data-ph]").forEach(async im=>{const ref=im.dataset.ph;if(mem[ref]){im.src=mem[ref];return}const v=await loadPhoto(ref);if(v&&im.dataset.ph===ref)im.src=v;else if(!v)im.title="Photo loads when you have signal"})}
+const phSrc=ref=>ref.startsWith("drive:")?(mem[ref]||PH_BLANK):ref;
+
+/* ---------- sync: outbox up, pull down ---------- */
+function rebuild(){
+  const m={};Object.values(cache.items).forEach(i=>m[i.id]=Object.assign({},i));
+  for(const op of outbox){
+    if(op.type==="add"){if(!m[op.id])m[op.id]=Object.assign({},op.data,{id:op.id,_pending:true})}
+    else if(op.type==="update"){if(m[op.id]){Object.assign(m[op.id],op.data);m[op.id]._pending=true}}
+    else if(op.type==="remove")delete m[op.id];
+  }
+  items=Object.values(m);render();syncUI();
+}
+function acceptItem(it,op){
+  if(op&&op.data&&Array.isArray(op.data.photos)&&Array.isArray(it.photos))   // keep local copies of photos we just uploaded
+    op.data.photos.forEach((p,k)=>{const ref=it.photos[k];if(p&&p.startsWith("data:")&&ref&&ref.startsWith("drive:")){mem[ref]=p;idb.set(ref,p)}});
+  if(it.deleted)delete cache.items[it.id];else cache.items[it.id]=it;
+}
+function queue(op){
+  if(op.type==="remove"&&outbox.some(o=>o.type==="add"&&o.id===op.id))outbox=outbox.filter(o=>o.id!==op.id);
+  else outbox.push(op);
+  try{saveOutbox()}catch(e){outbox=outbox.filter(o=>o!==op);rebuild();throw{code:"phone_full"}}
+  rebuild();return "queued";
+}
+async function send(op){
+  op.t=Date.now();
+  if(outbox.length||!navigator.onLine)return queue(op);
+  try{const j=await api("push",{op},op.type==="remove"?20000:45000);acceptItem(j.item,op);cache.syncedAt=Date.now();saveCache();rebuild();return "sent"}
+  catch(e){if(e.code==="denied"||e.code==="invalid"||e.code==="bad_code")throw e;return queue(op)}
+}
+async function flush(){
+  if(sending||!outbox.length||!navigator.onLine||!me)return;
+  sending=true;syncUI();let sent=0,dropped=0;
+  while(outbox.length){const op=outbox[0];
+    try{const j=await api("push",{op},60000);acceptItem(j.item,op);outbox.shift();saveOutbox();sent++}
+    catch(e){if(e.code==="denied"||e.code==="invalid"){outbox.shift();saveOutbox();dropped++;continue}if(e.code==="bad_code"){sending=false;signOut(true);return}break}
+  }
+  sending=false;cache.syncedAt=Date.now();saveCache();rebuild();
+  if(dropped)toast(`${dropped} change${dropped>1?"s":""} weren't accepted — check those items`);
+  else if(sent&&!outbox.length)toast(`Sent ${sent} change${sent>1?"s":""} saved on this phone`);
+}
+async function pull(){
+  if(pulling||!navigator.onLine||!me||document.visibilityState==="hidden")return;
+  pulling=true;
+  try{const j=await api("pull",{since:cache.since||0});
+    (j.items||[]).forEach(it=>acceptItem(it,null));
+    cache.since=j.now;cache.config=j.config||cache.config;if(j.settings){cache.settings=j.settings;applySettings(j.settings)}cache.syncedAt=Date.now();saveCache();
+    if(j.role&&me.role!==j.role){me.role=j.role;lsSet(K.me,me)}
+    rebuild();
+  }catch(e){if(e.code==="bad_code"){signOut(true)}else syncUI()}
+  pulling=false;
+}
+async function syncNow(){await flush();await pull()}
+function setSync(live,txt){const s=$("sync");s.className="sync"+(live?" live":"");s.innerHTML="<b></b>"+esc(txt)}
+function syncUI(){
+  const bar=$("obar"),n=outbox.length,off=!navigator.onLine;
+  if(!configured()){setSync(false,"Not connected — set API_URL");bar.hidden=true;return}
+  if(n){setSync(false,sending?`Sending ${n}…`:`${n} waiting to send`);bar.hidden=false;
+    $("obTxt").textContent=sending?`Sending ${n} change${n>1?"s":""}…`:`${n} change${n>1?"s":""} saved on this phone${off?" — will send when you have signal":" — retrying"}`;$("obGo").hidden=sending||off}
+  else{bar.hidden=true;
+    if(off)setSync(false,"No signal · changes save to phone");
+    else{const a=cache.syncedAt?Math.round((Date.now()-cache.syncedAt)/60000):null;setSync(true,(role()==="sub"?"Trade partner · ":"")+(a==null?"Syncing…":a<1?"Up to date":`Synced ${a} min ago`))}}
+}
+const store={
+  async add(o){o.id=o.id||newId();const d=Object.assign({},o);delete d.id;delete d._pending;return send({type:"add",id:o.id,data:d})},
+  async update(id,p){const d=Object.assign({},p);delete d._pending;delete d.id;delete d.num;return send({type:"update",id,data:d})},
+  async remove(id){return send({type:"remove",id})}};
+
+/* ---------- sign in ---------- */
+function showLogin(msg){if(!JOB){showJobs(true);return}
+  $("lName").value=me?me.name:(localStorage.getItem("wtc-name")||"");$("lCode").value="";$("lErr").textContent=msg||"";
+  $("lTitle").textContent="Sign in"+(S.job?" — "+(S.short||S.job):"");$("lJob").textContent=S.job?S.job+". ":"";
+  openS("lSheet");setTimeout(()=>$($("lName").value?"lCode":"lName").focus(),230);
+  if(!S.job&&navigator.onLine)api("info").then(j=>{if(j.settings){applySettings(j.settings);$("lTitle").textContent="Sign in — "+(S.short||S.job);$("lJob").textContent=S.job+". "}}).catch(()=>{})}
+$("lGo").onclick=async()=>{
+  const name=$("lName").value.trim(),code=$("lCode").value.trim();localStorage.setItem("wtc-name",name);
+  if(!name){$("lName").focus();return}if(!code){$("lCode").focus();return}
+  if(!navigator.onLine){$("lErr").textContent="Signing in needs signal the first time. After that it works offline.";return}
+  const b=$("lGo");b.disabled=true;b.textContent="Checking…";
+  const prev=me;me={name,code};
+  try{const j=await api("hello");me={name,code,role:j.role,folderUrl:j.folderUrl||"",sheetUrl:j.sheetUrl||""};lsSet(K.me,me);
+    cache.config=j.config||cache.config;if(j.settings){cache.settings=j.settings;applySettings(j.settings)}saveCache();rememberJob();closeAll();toast(`Signed in as ${name}`+(j.role==="sub"?" (trade partner)":""));await syncNow();render()}
+  catch(e){me=prev;$("lErr").textContent=e.code==="bad_code"?"That site code isn't right.":e.code==="setup_needed"?"This job isn't finished setting up — the site codes in the Settings tab still need to be set.":e.code==="not_configured"?"Open the job link from your project team first.":"Couldn't reach this job — check signal and the job link, then try again."}
+  b.disabled=false;b.textContent="Sign in";
+};
+$("lCode").onkeydown=e=>{if(e.key==="Enter")$("lGo").click()};
+function signOut(bad){
+  if(outbox.length&&!bad&&!confirm(`${outbox.length} change(s) haven't sent yet. Signing out keeps them on this phone and sends them after you sign back in. Continue?`))return;
+  me=null;localStorage.removeItem(K.me);closeAll();render();showLogin(bad?"The site code changed — sign in again with the new code.":"");
+}
+
+/* ---------- trades / owners (shared config) ---------- */
+function allTrades(){const b=BASE_TRADES.filter(t=>t!=="Other");return [...b,...customTrades().filter(t=>!b.includes(t)),"Other"]}
+function allOwners(){const b=OWNERS.filter(o=>o!=="Unassigned");return [...b,...customOwners().filter(o=>!b.includes(o)),"Unassigned"]}
+function usedPlus(base,field){const a=base.slice();items.forEach(i=>{const v=field==="owner"?ownerOf(i):i[field];if(v&&!a.includes(v))a.splice(a.length-1,0,v)});return a}
+async function saveConfig(key,list){const j=await api("config",{key,list});cache.config=j.config;saveCache();render()}
+async function addTo(key,name,all,quiet){name=(name||"").trim().replace(/\s+/g," ");if(!name)return null;
+  const hit=all().find(t=>t.toLowerCase()===name.toLowerCase());if(hit)return hit;
+  try{await saveConfig(key,[...(cache.config[key]||[]),name]);if(!quiet)toast("Added "+name);return name}
+  catch(e){toast(e.code==="offline"||e.code==="timeout"?"Adding to the list needs signal — try again in coverage":`Only ${S.gc} staff can change the list`);return null}}
+const addTrade=(n,q)=>addTo("trades",n,allTrades,q),addOwner=n=>addTo("owners",n,allOwners);
+function fillSheetTrades(val){const a=allTrades();if(val&&val!=="__new"&&!a.includes(val))a.splice(a.length-1,0,val);
+  $("sT").innerHTML=a.map(v=>`<option>${esc(v)}</option>`).join("")+(isGC()?'<option value="__new">+ Add new trade…</option>':"");$("sT").value=(val&&val!=="__new")?val:a[0];$("sT").dataset.prev=$("sT").value}
+
+/* ---------- filtering + render ---------- */
+function filtered(ignoreTrade){
+  const b=$("fB").value,t=$("fT").value,o=$("fO").value,g=$("fG").value,q=$("fQ").value.trim().toLowerCase();
+  return items.filter(i=>(!b||i.bldg===b)&&(ignoreTrade||!t||i.trade===t)&&(!o||ownerOf(i)===o)&&(!g||(g==="any"?!!i.gate:i.gate===g))
+    &&(!roomPin||roomKey(i.bldg,i.level,i.room)===roomPin)
+    &&(!q||(i.room+" "+i.desc+" "+i.level+" "+tag(i)+" ps"+(i.ps||"")).toLowerCase().includes(q)));
+}
+const byLoc=(a,b)=>BLDGS.indexOf(a.bldg)-BLDGS.indexOf(b.bldg)||String(a.level).localeCompare(b.level)||String(a.room).localeCompare(b.room,undefined,{numeric:true})||(b.pri==="high")-(a.pri==="high")||(a.num||9e9)-(b.num||9e9);
+function render(){
+  keepOpts($("fT"),usedPlus(allTrades(),"trade"),"All trades");
+  keepOpts($("fO"),usedPlus(allOwners(),"owner"),"All owners");
+  document.body.classList.toggle("sub",role()==="sub");document.body.classList.toggle("ro",!canWrite());
+  if(roomPin){const [b,l,r]=roomPin.split("|");$("pin").hidden=false;$("pinTxt").textContent=`${b} · Level ${l} · ${r||"General"}`}else $("pin").hidden=true;
+  const base=filtered();
+  const c={active:0,open:0,wip:0,ready:0,done:0};base.forEach(i=>{c[i.status]++;if(i.status!=="done")c.active++});
+  const tabs=[["active","Not done"],["open","Open"],["wip","Working"],["ready","To verify"],["done","Verified"]];
+  $("tally").innerHTML=tabs.map(([k,l])=>`<button data-v="${k}" aria-pressed="${view===k}"><span class="n">${c[k]}</span><span class="l">${l}</span></button>`).join("");
+  let show=base.filter(i=>view==="active"?i.status!=="done":i.status===view);
+  const ageSort=$("fS").value==="age";show.sort(ageSort?(a,b)=>(a.createdAt||0)-(b.createdAt||0):byLoc);
+  const L=$("list");
+  if(!me){L.innerHTML=`<div class="empty"><strong>Sign in to start</strong>Enter your name and the site code.</div>`;return}
+  if(!items.length){L.innerHTML=`<div class="empty"><strong>No items yet</strong>Tap “+ Add item” for each note you'd normally tape to the wall.</div>`;return}
+  if(!show.length){L.innerHTML=`<div class="empty"><strong>Nothing here</strong>${roomPin?"No work left in this room.":"No items match these filters."}</div>`;return}
+  let h="",gb=null,gr=null;
+  show.forEach(i=>{if(!ageSort){
+      if(i.bldg!==gb){gb=i.bldg;gr=null;const n=show.filter(x=>x.bldg===gb).length;h+=`<div class="group"><h2>${esc(gb)}<span>${n} item${n>1?"s":""}</span></h2></div>`}
+      const rk=i.level+"|"+i.room;if(rk!==gr){gr=rk;h+=`<div class="room">Level ${esc(i.level)} · ${esc(i.room||"General")}</div>`}}
+    h+=card(i,ageSort)});
+  L.innerHTML=h;hydrate(L);
+}
+function card(i,showLoc){
+  const d=days(i.createdAt),open=i.status!=="done",overdue=i.due&&open&&new Date(i.due+"T23:59")<new Date();
+  let act="";
+  if(i.status==="ready"&&!isGC())act=`<div class="await">Waiting on GC verify</div>`;
+  else if(i.status==="done"&&!isGC())act="";
+  else if(canWrite()){const [nx,nl]=NEXT[i.status];act=`<button class="act ${i.status==="ready"?"go":""}" data-next="${i.id}" data-to="${nx}">${nl}</button>`}
+  return `<div class="item" data-s="${i.status}"><div class="bar"></div>
+    <button class="body" data-edit="${i.id}"><div class="desc"><span class="num">${esc(tagOrPending(i))}</span>${esc(i.desc)}</div>
+    <div class="meta">${showLoc?`<span>${esc(i.bldg)} · L${esc(i.level)} · ${esc(i.room||"General")}</span>`:""}<span class="trade">${esc(i.trade)}</span><span>${ST[i.status]}</span><span>${esc(ownerOf(i))}</span>
+    ${i.gate?`<span class="badge gate">${esc(GATES[i.gate]||i.gate)}</span>`:""}${i.pri==="high"?'<span class="hot">Priority</span>':""}
+    ${i._pending?'<span class="badge age3">On this phone — not sent yet</span>':""}${i.ps?`<span>PS #${esc(i.ps)}</span>`:""}${i.due?`<span class="${overdue?"hot":""}">Due ${fmt(i.due+"T12:00")}</span>`:""}
+    ${open?(d>7?`<span class="badge age7">${ageTxt(d)} open</span>`:d>3?`<span class="badge age3">${ageTxt(d)} open</span>`:`<span>open ${ageTxt(d)}</span>`):`<span>verified ${fmt(i.closedAt)}</span>`}</div>
+    ${photosOf(i).length?`<div class="thumbs">${photosOf(i).map((p,k)=>`<img class="thumb phimg" src="${phSrc(p)}" data-ph="${esc(p.startsWith("drive:")?p:"")}" alt="Photo ${k+1}" data-view="${i.id}" data-k="${k}">`).join("")}</div>`:""}</button>
+    ${act}</div>`;
+}
+
+/* ---------- sheets ---------- */
+const SHEETS=["jSheet","shSheet","sheet","oSheet","tSheet","mSheet","rSheet","qSheet","vrSheet","iSheet","lSheet"];
+function openS(id){SHEETS.forEach(s=>$(s).classList.toggle("on",s===id));$("scrim").classList.add("on")}
+function closeAll(){if(($("lSheet").classList.contains("on")&&!me)||($("jSheet").classList.contains("on")&&!JOB))return;SHEETS.forEach(s=>$(s).classList.remove("on"));$("scrim").classList.remove("on");editing=null}
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeAll);
+$("scrim").onclick=closeAll;
+
+/* ---------- item sheet ---------- */
+function openItem(item){
+  if(!me){showLogin();return}
+  editing=item?item.id:null;
+  const last=lsGet("wtc-last",{});
+  let pb=null,pl=null,pr=null;if(roomPin)[pb,pl,pr]=roomPin.split("|");
+  draft=item?Object.assign({},item):{bldg:pb||last.bldg||$("fB").value||BLDGS[0],level:pl||last.level||"1",room:pr??last.room??"",trade:last.trade||$("fT").value||BASE_TRADES[0],desc:"",pri:"normal",due:"",gate:"",status:"open"};
+  draft.photos=item?photosOf(item).slice():[];
+  draft.owner=item?ownerOf(item):OWNER_BY_BLDG[draft.bldg];draft.ownerTouched=!!(item&&item.owner);
+  $("sTitle").textContent=item?("Edit "+tagOrPending(item)):"New item";
+  $("sSave").textContent=item?"Save changes":"Add item";
+  $("sDel").hidden=!item||!isGC();$("sStatusWrap").hidden=!item;
+  seg($("sB"),BLDGS,draft.bldg,v=>{draft.bldg=v;if(!draft.ownerTouched){draft.owner=OWNER_BY_BLDG[v];drawOwner()}});
+  opts($("sL"),LEVELS);$("sL").value=draft.level;
+  fillSheetTrades(draft.trade);
+  $("sR").value=draft.room||"";$("sD").value=draft.desc;$("sDue").value=draft.due||"";$("sPS").value=draft.ps||"";
+  drawOwner();
+  seg($("sG"),Object.keys(GATES),draft.gate||"",v=>draft.gate=v,Object.values(GATES));
+  seg($("sP"),["normal","high"],draft.pri,v=>draft.pri=v,["Normal","Priority"]);
+  const sts=isGC()?Object.keys(ST):["open","wip","ready"];
+  seg($("sS"),sts,draft.status,v=>draft.status=v,sts.map(k=>ST[k]));
+  drawStrip();
+  $("roomList").innerHTML=[...new Set(items.map(i=>i.room).filter(Boolean))].map(r=>`<option value="${esc(r)}">`).join("");
+  drawHist(item);openS("sheet");
+  setTimeout(()=>$(item||roomPin?"sD":"sR").focus(),230);
+}
+function drawOwner(){const a=allOwners();const o=a.includes(draft.owner)?a:[...a.slice(0,-1),draft.owner,"Unassigned"];
+  seg($("sO"),o,draft.owner,v=>{draft.owner=v;draft.ownerTouched=true});
+  if(isGC()){const b=document.createElement("button");b.type="button";b.textContent="+ Add owner";b.style.borderStyle="dashed";
+    b.onclick=async e=>{e.stopPropagation();const n=prompt("Owner name (super or person responsible)");const added=n?await addOwner(n):null;if(added){draft.owner=added;draft.ownerTouched=true}drawOwner()};
+    $("sO").appendChild(b)}}
+function drawHist(item){
+  if(!item){$("sHist").innerHTML="";return}
+  const log=Array.isArray(item.log)&&item.log.length?item.log:[{t:item.createdAt,by:item.byName,a:"Added"}];
+  $("sHist").innerHTML=`<b>History</b><ul class="hlog">${log.slice().reverse().map(e=>`<li>${fmtT(e.t)} — ${esc(e.a)}${e.by?" · "+esc(e.by):""}</li>`).join("")}</ul>`;
+}
+function drawStrip(){const ps=draft.photos;
+  $("pStrip").innerHTML=ps.map((p,k)=>`<div class="pslot"><img class="phimg" src="${phSrc(p)}" data-ph="${esc(p.startsWith("drive:")?p:"")}" alt="Photo ${k+1}" data-k="${k}"><button class="x" type="button" data-rm="${k}" aria-label="Remove photo ${k+1}">×</button></div>`).join("")
+    +(ps.length<MAXP?`<label class="padd" for="sFile">${ps.length?"+ Add another":"Take / attach photo"}</label>`:"");
+  $("pLab").textContent=ps.length?`Photos (${ps.length} of ${MAXP})`:`Photos (optional, up to ${MAXP})`;hydrate($("pStrip"))}
+$("pStrip").onclick=e=>{const rm=e.target.closest("[data-rm]");
+  if(rm){if(confirm("Remove this photo?")){draft.photos.splice(+rm.dataset.rm,1);drawStrip()}return}
+  const im=e.target.closest("img[data-k]");if(im){const it=editing?Object.assign({},items.find(i=>i.id===editing),{ps:$("sPS").value.trim()}):null;openViewer(draft.photos,+im.dataset.k,it?tagOrPending(it):"New item",it)}};
+$("sFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{
+  let q=.72,max=1400,out;do{const s=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);out=c.toDataURL("image/jpeg",q);max-=200;q-=.06}while(out.length>90000&&max>300);
+  if(draft.photos.length<MAXP){draft.photos.push(out);drawStrip()}};img.src=r.result};r.readAsDataURL(f);e.target.value=""};
+$("sT").onchange=async()=>{const sel=$("sT");if(sel.value!=="__new"){sel.dataset.prev=sel.value;return}
+  const n=prompt("New trade or company name");const added=n?await addTrade(n):null;fillSheetTrades(added||sel.dataset.prev)};
+
+$("sSave").onclick=async()=>{
+  const d=$("sD").value.trim();if(!d){$("sD").focus();toast("Describe what needs done");return}
+  const o={bldg:draft.bldg,level:$("sL").value,room:$("sR").value.trim(),trade:$("sT").value,desc:d,pri:draft.pri,due:$("sDue").value,ps:$("sPS").value.trim(),
+    owner:draft.owner,gate:draft.gate||"",photos:draft.photos.slice(0,MAXP),updatedAt:Date.now()};
+  lsSet("wtc-last",{bldg:o.bldg,level:o.level,room:o.room,trade:o.trade});
+  const btn=$("sSave");btn.disabled=true;
+  try{
+    if(editing){const prev=items.find(i=>i.id===editing);let log=prev.log;
+      if(!Array.isArray(log)||!log.length)log=[{t:prev.createdAt,by:prev.byName||"",a:"Added"}];
+      if(draft.status!==prev.status){o.status=draft.status;log=logAdd(log,"Status → "+ST[draft.status]);
+        if(o.status==="done"){o.closedAt=Date.now();o.vbyName=me.name}else{o.closedAt=null;o.vbyName=""}}
+      const changed=["desc","room","level","bldg","trade","owner","gate","pri","due","ps"].filter(k=>(o[k]||"")!==(prev[k]||"")&&!(k==="owner"&&o.owner===ownerOf(prev)));
+      if(changed.length)log=logAdd(log,"Edited "+changed.map(k=>({desc:"description",ps:"ProjectSight #",pri:"priority"}[k]||k)).join(", "));
+      const pp=photosOf(prev);if(pp.length!==o.photos.length||pp.some((p,k)=>p!==o.photos[k]))log=logAdd(log,"Photos updated");else delete o.photos;
+      o.log=log;const r=await store.update(editing,o);toast(r==="queued"?"No signal — saved on this phone, will send later":"Saved");closeAll()}
+    else{Object.assign(o,{status:"open",createdAt:Date.now(),closedAt:null,byName:me.name,vbyName:"",log:logAdd([],"Added")});
+      const r=await store.add(o);
+      toast(r==="queued"?"Saved on this phone — will send when you have signal":`Added ${tag(items.find(i=>i.id===o.id))||""} — add another or close`);
+      $("sD").value="";draft.photos=[];drawStrip();$("sDue").value="";$("sPS").value="";
+      seg($("sP"),["normal","high"],"normal",v=>draft.pri=v,["Normal","Priority"]);draft.pri="normal";$("sD").focus()}
+  }catch(e){toast(e.code==="phone_full"?"Phone storage is full — get to signal so saved items can send, then try again":e.code==="denied"?`Only ${S.gc} staff can do that`:e.code==="bad_code"?"Site code changed — sign in again":"Didn't save — retry")}
+  btn.disabled=false;
+};
+$("sDel").onclick=async()=>{if(!isGC()||!confirm("Delete this item? This can't be undone."))return;try{const r=await store.remove(editing);toast(r==="queued"?"Deleted on this phone — will sync later":"Deleted");closeAll()}catch(e){toast("Didn't delete — retry")}};
+$("addBtn").onclick=()=>openItem(null);
+
+$("list").onclick=async e=>{
+  const v=e.target.closest("[data-view]");
+  if(v){const it=items.find(i=>i.id===v.dataset.view);if(it)openViewer(photosOf(it),+v.dataset.k,`${tagOrPending(it)} · ${it.room||it.bldg} · ${it.desc}`,it);return}
+  const n=e.target.closest("[data-next]");
+  if(n){const it=items.find(i=>i.id===n.dataset.next),to=n.dataset.to;if(!it||!canWrite())return;
+    if((to==="done"||it.status==="done")&&!isGC())return;
+    n.disabled=true;
+    const log=Array.isArray(it.log)&&it.log.length?it.log:[{t:it.createdAt,by:it.byName||"",a:"Added"}];
+    const p={status:to,updatedAt:Date.now(),closedAt:to==="done"?Date.now():null,vbyName:to==="done"?me.name:"",log:logAdd(log,to==="open"?"Reopened":"Status → "+ST[to])};
+    try{const r=await store.update(it.id,p);toast((to==="done"?`Verified ${tag(it)}`:to==="open"?"Reopened":ST[to])+(r==="queued"?" — saved on phone":""))}
+    catch(err){toast(err.code==="phone_full"?"Phone storage is full — get to signal":err.code==="denied"?`Only ${S.gc} staff can do that`:"Didn't update — retry");n.disabled=false}return}
+  const ed=e.target.closest("[data-edit]");if(!ed||!canWrite())return;
+  const it=items.find(i=>i.id===ed.dataset.edit);if(it&&(isGC()||it.status!=="done"))openItem(it);
+};
+$("tally").onclick=e=>{const b=e.target.closest("button");if(!b)return;view=b.dataset.v;render()};
+["fB","fT","fO","fG","fS"].forEach(id=>$(id).onchange=render);$("fQ").oninput=render;
+$("obGo").onclick=()=>syncNow();
+$("pinX").onclick=()=>{roomPin=null;history.replaceState(null,"",location.pathname+(JOB?"?job="+JOB:""));render()};
+
+/* ---------- trades & owners sheets ---------- */
+function listUI(key,listEl){const l=cache.config[key]||[];listEl.innerHTML=l.length?l.map((t,i)=>`<li><span>${esc(t)}</span><button data-rm="${i}">Remove</button></li>`).join(""):`<li><span class="note" style="margin:0">None added yet.</span></li>`}
+function wireList(key,inp,addBtn,listEl,adder,label){
+  const go=async()=>{if(await adder(inp.value)){inp.value="";listUI(key,listEl)}inp.focus()};
+  addBtn.onclick=go;inp.onkeydown=e=>{if(e.key==="Enter")go()};
+  listEl.onclick=async e=>{const b=e.target.closest("[data-rm]");if(!b)return;const t=(cache.config[key]||[])[+b.dataset.rm];
+    if(!confirm(`Remove "${t}" from the ${label} list? Items already assigned keep it.`))return;
+    try{await saveConfig(key,(cache.config[key]||[]).filter(x=>x!==t));listUI(key,listEl);toast("Removed "+t)}catch(err){toast("Needs signal — try again in coverage")}};
+}
+wireList("trades",$("tNew"),$("tAdd"),$("tList"),addTrade,"trade");
+wireList("owners",$("oNew"),$("oAdd"),$("oList"),addOwner,"owner");
+
+/* ---------- more menu ---------- */
+$("moreBtn").onclick=()=>{
+  $("mJobTxt").textContent=jobsList().length>1?`${jobsList().length} jobs on this phone`:"Add or open another job";
+  $("mMeTxt").textContent=me?`Signed in as ${me.name}${role()==="sub"?" (trade partner)":""}`:"Not signed in";
+  $("roleNote").textContent=role()==="sub"?`Trade partner access: you can add items and move them to Ready to verify. ${S.gc} verifies and closes.`:"";
+  openS("mSheet")};
+$("mTr").onclick=()=>{listUI("trades",$("tList"));$("tNew").value="";openS("tSheet");setTimeout(()=>$("tNew").focus(),230)};
+$("mOw").onclick=()=>{listUI("owners",$("oList"));$("oNew").value="";openS("oSheet");setTimeout(()=>$("oNew").focus(),230)};
+$("mQR").onclick=openQR;$("mRep").onclick=openReport;$("mImp").onclick=openImport;$("mCsv").onclick=exportCSV;
+$("mZip").onclick=()=>{if(me&&me.folderUrl)window.open(me.folderUrl,"_blank");else toast("Sign out and back in with signal to load the folder link")};
+$("mGs").onclick=()=>{if(me&&me.sheetUrl)window.open(me.sheetUrl,"_blank");else toast("Sign out and back in with signal to load the sheet link")};
+$("mMe").onclick=()=>signOut(false);
+function jobsList(){return lsGet("wtc-jobs",[])}
+function rememberJob(){if(!JOB)return;const l=jobsList().filter(j=>j.id!==JOB);l.unshift({id:JOB,name:S.job||JOB.slice(0,10),short:S.short||""});lsSet("wtc-jobs",l.slice(0,20));localStorage.setItem("wtc-lastjob",JOB)}
+const jobUrl=id=>location.origin+location.pathname+"?job="+id;
+function showJobs(must){
+  const l=jobsList();
+  $("jList").innerHTML=l.length?l.map(j=>`<li><span><b>${esc(j.short||j.name)}</b>${j.short&&j.name!==j.short?` <span class="note">${esc(j.name)}</span>`:""}${j.id===JOB?' <span class="note">· open now</span>':""}</span>${j.id===JOB?"":`<button data-open="${esc(j.id)}" style="color:var(--ink)">Open</button>`}</li>`).join(""):'<li><span class="note" style="margin:0">No jobs on this phone yet.</span></li>';
+  $("jErr").textContent=must?"Open the job link your project team sent, or paste it here.":"";$("jLink").value="";$("jClose").hidden=!!must;openS("jSheet")}
+$("jList").onclick=e=>{const b=e.target.closest("[data-open]");if(b)location.href=jobUrl(b.dataset.open)};
+$("jGo").onclick=()=>{const id=jobFromText($("jLink").value);if(!id){$("jErr").textContent="That doesn't look like a job link. It should contain ?job= or end in /exec.";return}location.href=jobUrl(id)};
+$("mJob").onclick=()=>showJobs(false);
+$("mShare").onclick=async()=>{const u=jobUrl(JOB);$("shLink").value=u;$("shQR").innerHTML="";openS("shSheet");
+  try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js","QRCode");new QRCode($("shQR"),{text:u,width:220,height:220,correctLevel:QRCode.CorrectLevel.M})}catch(e){$("shQR").textContent="QR needs signal the first time."}};
+$("shCopy").onclick=async()=>{try{await navigator.clipboard.writeText($("shLink").value);toast("Link copied")}catch(e){$("shLink").select();toast("Press and hold to copy")}};
+$("shPrint").onclick=()=>{const cv=$("shQR").querySelector("canvas");if(!cv){toast("QR not ready yet");return}
+  $("printArea").innerHTML=`<div class="pg" style="text-align:center"><h2 style="font:700 30pt 'Barlow Semi Condensed',Arial,sans-serif;margin:20mm 0 4mm">${esc(S.short||S.job)} — Work to Complete</h2><p style="font-size:14pt;margin:0 0 10mm">${esc(S.job)}</p><img src="${cv.toDataURL()}" style="width:110mm;height:110mm"><p style="font-size:14pt;margin-top:8mm">Scan, then sign in with your name and the site code.<br>Then use your browser's Add to Home Screen.</p></div>`;window.print()};
+
+/* ---------- trade rollup ---------- */
+function rollupData(){
+  const rows={};filtered(true).forEach(i=>{const r=rows[i.trade]=rows[i.trade]||{trade:i.trade,open:0,wip:0,ready:0,old7:0,oldest:null};
+    if(i.status==="done")return;r[i.status]++;if(days(i.createdAt)>7)r.old7++;if(!r.oldest||(i.createdAt||0)<(r.oldest.createdAt||0))r.oldest=i});
+  return Object.values(rows).filter(r=>r.open+r.wip+r.ready>0).sort((a,b)=>(b.open+b.wip+b.ready)-(a.open+a.wip+a.ready));
+}
+function filterDesc(){const p=[];if(roomPin)p.push(roomPin.split("|").join(" · "));if($("fB").value)p.push($("fB").value);if($("fO").value)p.push("Owner: "+$("fO").value);if($("fG").value)p.push($("fG").selectedOptions[0].text);return p.length?p.join(" · "):"All buildings"}
+$("rollBtn").onclick=()=>{
+  const rows=rollupData();$("rSub").textContent=`${filterDesc()} — tap a trade to see its items.`;
+  $("rTbl").innerHTML=rows.length?`<tr><th>Trade</th><th>Open</th><th>Working</th><th>To verify</th><th>Over 7 days</th><th>Oldest open item</th></tr>`+
+    rows.map(r=>`<tr data-trade="${esc(r.trade)}"><td><b>${esc(r.trade)}</b></td><td class="n">${r.open}</td><td class="n">${r.wip}</td><td class="n">${r.ready}</td><td class="n" style="color:${r.old7?"var(--open)":"inherit"}">${r.old7}</td><td class="sm">${esc(tagOrPending(r.oldest))} · ${esc(r.oldest.room||r.oldest.bldg)} · ${ageTxt(days(r.oldest.createdAt))}<br>${esc(r.oldest.desc).slice(0,70)}</td></tr>`).join("")
+    :`<tr><td class="sm">No open work for these filters.</td></tr>`;
+  openS("rSheet")};
+$("rTbl").onclick=e=>{const r=e.target.closest("[data-trade]");if(!r)return;$("fT").value=r.dataset.trade;view="active";closeAll();render();window.scrollTo(0,0)};
+$("rPrint").onclick=()=>{const rows=rollupData();
+  $("printArea").innerHTML=`<div class="pg"><div class="ph"><h2>Trade rollup</h2><div>${esc(S.short||S.job)} · Work to Complete<br>${esc(filterDesc())}<br>Printed ${new Date().toLocaleString()}</div></div>
+  <table><tr><th>Trade</th><th>Open</th><th>Working</th><th>To verify</th><th>Over 7 days</th><th>Oldest open item</th><th style="width:40mm">Commitment / notes</th></tr>
+  ${rows.map(r=>`<tr><td>${esc(r.trade)}</td><td class="c">${r.open}</td><td class="c">${r.wip}</td><td class="c">${r.ready}</td><td class="c">${r.old7}</td><td>${esc(tagOrPending(r.oldest))} · ${esc(r.oldest.room||r.oldest.bldg)} · ${ageTxt(days(r.oldest.createdAt))}<br>${esc(r.oldest.desc)}</td><td></td></tr>`).join("")}</table></div>`;
+  window.print()};
+
+/* ---------- print posting sheets ---------- */
+$("printBtn").onclick=()=>{
+  const rows=filtered().filter(i=>i.status!=="done");if(!rows.length){toast("No open items to print");return}
+  const g={};rows.sort(byLoc).forEach(i=>{const k=roomKey(i.bldg,i.level,i.room||"General");(g[k]=g[k]||[]).push(i)});
+  const today=new Date().toLocaleDateString();
+  $("printArea").innerHTML=Object.keys(g).map(k=>{const [b,l,r]=k.split("|");
+    return `<div class="pg"><div class="ph"><h2>${esc(b)} · L${esc(l)} · ${esc(r)}</h2><div>${esc(S.short||S.job)} · Work to Complete<br>Owner: ${esc(ownerOf(g[k][0]))}<br>Printed ${today}</div></div>
+    <table><tr><th style="width:22mm">Item #</th><th style="width:36mm">Trade</th><th>Item</th><th class="box">Sub init.</th><th class="box">GC verify</th></tr>
+    ${g[k].map(i=>`<tr><td>${esc(tagOrPending(i))}${i.ps?"<br>PS "+esc(i.ps):""}</td><td>${esc(i.trade)}</td><td>${esc(i.desc)}${i.pri==="high"?" (PRIORITY)":""}${i.gate?" ["+esc(GATES[i.gate]||i.gate)+"]":""}${i.due?" — due "+esc(i.due):""}</td><td class="box"></td><td class="box"></td></tr>`).join("")}</table>
+    <div class="sign"><div>Sub signature / date</div><div>${esc(S.gc)} verification / date</div></div></div>`}).join("");
+  window.print()};
+
+/* ---------- QR codes ---------- */
+let qRooms=[];
+const appUrl=()=>location.origin+location.pathname+"?job="+JOB;
+function openQR(){
+  opts($("qB"),BLDGS);$("qB").value=$("fB").value||BLDGS[0];opts($("qL"),LEVELS);$("qR").value="";
+  const set=new Set(items.map(i=>roomKey(i.bldg,i.level,i.room||"")).filter(k=>!k.endsWith("|")));
+  qRooms=[...set].map(k=>({k,on:!$("fB").value||k.startsWith($("fB").value+"|")}));drawQR();openS("qSheet")}
+function drawQR(){qRooms.sort((a,b)=>a.k.localeCompare(b.k,undefined,{numeric:true}));
+  $("qList").innerHTML=qRooms.length?qRooms.map((r,i)=>{const [b,l,rm]=r.k.split("|");return `<div class="chk"><input type="checkbox" id="qc${i}" data-i="${i}" ${r.on?"checked":""}><label for="qc${i}">${esc(rm)} <span class="note">${esc(b)} · Level ${esc(l)}</span></label></div>`}).join(""):'<p class="note">No rooms yet. Add one above.</p>';
+  $("qAll").checked=qRooms.length&&qRooms.every(r=>r.on)}
+$("qList").onchange=e=>{const i=e.target.dataset.i;if(i!=null){qRooms[+i].on=e.target.checked;$("qAll").checked=qRooms.every(r=>r.on)}};
+$("qAll").onchange=e=>{qRooms.forEach(r=>r.on=e.target.checked);drawQR()};
+$("qAdd").onclick=()=>{const r=$("qR").value.trim();if(!r){$("qR").focus();return}const k=roomKey($("qB").value,$("qL").value,r);
+  const ex=qRooms.find(x=>x.k===k);if(ex)ex.on=true;else qRooms.push({k,on:true});$("qR").value="";drawQR();$("qR").focus()};
+$("qR").onkeydown=e=>{if(e.key==="Enter")$("qAdd").click()};
+$("qPrint").onclick=async()=>{
+  const sel=qRooms.filter(r=>r.on);if(!sel.length){toast("Select at least one room");return}
+  try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js","QRCode")}catch(e){toast("Couldn't load the QR tool — check signal");return}
+  const cards=sel.map(r=>{const [b,l,rm]=r.k.split("|");const box=document.createElement("div");
+    new QRCode(box,{text:appUrl()+"#room="+encodeURIComponent(r.k),width:512,height:512,correctLevel:QRCode.CorrectLevel.M});
+    const cv=box.querySelector("canvas");const src=cv?cv.toDataURL():(box.querySelector("img")||{}).src;
+    return `<div class="qrc"><img src="${src}" alt="QR code for ${esc(rm)}"><h3>${esc(rm)}</h3><p>${esc(b)} · Level ${esc(l)}</p><p>Scan to see and add work for this room</p></div>`});
+  let h="";for(let i=0;i<cards.length;i+=4)h+=`<div class="pg"><div class="qrgrid">${cards.slice(i,i+4).join("")}</div></div>`;
+  $("printArea").innerHTML=h;setTimeout(()=>window.print(),200)};
+
+/* ---------- verified report ---------- */
+function openReport(){const iso=d=>d.toISOString().slice(0,10);$("vrFrom").value=iso(new Date(Date.now()-6*864e5));$("vrTo").value=iso(new Date());countReport();openS("vrSheet")}
+function reportRows(){const f=new Date($("vrFrom").value+"T00:00").getTime(),t=new Date($("vrTo").value+"T23:59:59").getTime();
+  return filtered(false).filter(i=>i.status==="done"&&i.closedAt>=f&&i.closedAt<=t).sort((a,b)=>a.closedAt-b.closedAt)}
+function countReport(){const n=reportRows().length;$("vrCount").textContent=`${n} item${n===1?"":"s"} verified in this range.`}
+$("vrFrom").onchange=countReport;$("vrTo").onchange=countReport;
+$("vrPrint").onclick=()=>{const rows=reportRows();if(!rows.length){toast("Nothing verified in this range");return}
+  $("printArea").innerHTML=`<div class="pg"><div class="ph"><h2>Verified work report</h2><div>${esc(S.short||S.job)} · Work to Complete<br>${esc($("vrFrom").value)} to ${esc($("vrTo").value)} · ${esc(filterDesc())}<br>${rows.length} items · Printed ${new Date().toLocaleString()}</div></div>
+  <table><tr><th>Item #</th><th>PS #</th><th>Location</th><th>Trade</th><th>Item</th><th>Verified</th><th>By</th></tr>
+  ${rows.map(i=>`<tr><td>${esc(tagOrPending(i))}</td><td>${esc(i.ps||"")}</td><td>${esc(i.bldg)} · L${esc(i.level)} · ${esc(i.room||"General")}</td><td>${esc(i.trade)}</td><td>${esc(i.desc)}</td><td>${fmtT(i.closedAt)}</td><td>${esc(i.vbyName||"")}</td></tr>`).join("")}</table>
+  <div class="sign"><div>Prepared by / date</div><div>Reviewed by / date</div></div></div>`;
+  window.print()};
+
+/* ---------- import ---------- */
+const FIELDS=[["desc","Item description",/^(description|descr|item description|punch item description)$|descr|title|subject|issue|deficien/i],
+  ["room","Room / location",/room|location|area|space/i],["bldg","Building",/build|facility/i],["level","Level",/level|floor/i],
+  ["trade","Trade / company",/trade|company|respons|assign|ball in court|subcontract/i],["status","Status",/status/i],["due","Due date",/due/i],
+  ["ps","ProjectSight #",/^(no\.?|#|number|punch\s*(#|no\.?|number)|item\s*(#|no\.?|number)|id)$/i]];
+let iRows=[],iHead=[],iMap={};
+function openImport(){$("iStart").hidden=false;$("iMapWrap").hidden=true;$("iFile").value="";openS("iSheet")}
+$("iFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js","XLSX")}catch(err){toast("Couldn't load the Excel reader — check signal");return}
+  try{const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames.find(n=>/punch/i.test(n))||wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
+    let hi=rows.findIndex(r=>r.filter(c=>String(c).trim()).length>=2&&r.some(c=>FIELDS[0][2].test(String(c))));if(hi<0)hi=0;
+    iHead=rows[hi].map(c=>String(c).trim());iRows=rows.slice(hi+1).filter(r=>r.some(c=>String(c).trim()));
+    iMap={};const used=new Set();
+    FIELDS.forEach(([k,,rx])=>{let ix=iHead.findIndex((h,j)=>!used.has(j)&&h&&(k==="desc"?/^(description|item description)$/i.test(h):false));
+      if(ix<0)ix=iHead.findIndex((h,j)=>!used.has(j)&&h&&rx.test(h));if(ix>=0){iMap[k]=ix;used.add(ix)}});
+    $("iInfo").textContent=`${f.name}: ${iRows.length} rows found. Check the column matches below, then import.`;
+    $("iMap").innerHTML=FIELDS.map(([k,l])=>`<label for="im_${k}">${l}</label><select id="im_${k}" data-k="${k}"><option value="">— not in file —</option>${iHead.map((h,j)=>`<option value="${j}" ${iMap[k]===j?"selected":""}>${esc(h||"Column "+(j+1))}</option>`).join("")}</select>`).join("");
+    opts($("iDefB"),BLDGS);$("iDefB").value=$("fB").value||BLDGS[0];opts($("iDefT"),allTrades());
+    $("iStart").hidden=true;$("iMapWrap").hidden=false;drawImpPrev();
+  }catch(err){toast("Couldn't read that file — save as .xlsx or .csv and retry")}};
+$("iMap").onchange=e=>{const k=e.target.dataset.k;if(!k)return;if(e.target.value==="")delete iMap[k];else iMap[k]=+e.target.value;drawImpPrev()};
+$("iDefB").onchange=drawImpPrev;$("iDefT").onchange=drawImpPrev;
+const cell=(r,k)=>iMap[k]==null?"":String(r[iMap[k]]??"").trim();
+function matchBldg(s){s=String(s||"").toLowerCase();if(!s)return "";return BLDGS.find(b=>b.toLowerCase()===s)||BLDGS.find(b=>s.includes(b.toLowerCase()))||BLDGS.find(b=>{const w=b.toLowerCase().split(/[\s'’]/)[0];return w.length>3&&s.includes(w)})||""}
+function matchLevel(s){const m=String(s).match(/(?:level|lvl|floor|\bl)\s*-?\s*(\d)/i)||String(s).match(/^\s*(\d)\s*$/);if(m)return m[1];if(/roof/i.test(s))return "Roof";if(/exterior/i.test(s))return "Exterior";return ""}
+function matchTrade(s){if(!s)return "";const all=allTrades(),lo=s.toLowerCase();return all.find(t=>t.toLowerCase()===lo)||all.find(t=>{const w=t.toLowerCase().split(/[\s(]/)[0];return w.length>2&&lo.includes(w)})||s}
+function matchStatus(s){s=s.toLowerCase();if(/closed|complete|verified|done|approved/.test(s))return "done";if(/ready|review|pending verif|submitted/.test(s))return "ready";if(/progress|working|started/.test(s))return "wip";return "open"}
+function impItems(){const dupPS=new Set(items.map(i=>String(i.ps||"")).filter(Boolean));
+  return iRows.map(r=>{const desc=cell(r,"desc");if(!desc)return null;const loc=cell(r,"room");
+    const bldg=matchBldg(cell(r,"bldg"))||matchBldg(loc)||$("iDefB").value,level=matchLevel(cell(r,"level"))||matchLevel(loc)||"N/A";
+    const ps=cell(r,"ps");let due="";const dv=cell(r,"due");if(dv){const d=new Date(dv);if(!isNaN(d))due=d.toISOString().slice(0,10)}
+    return{desc,room:loc,bldg,level,trade:matchTrade(cell(r,"trade"))||$("iDefT").value,status:iMap.status!=null?matchStatus(cell(r,"status")):"open",ps,due,dup:ps&&dupPS.has(ps)}}).filter(Boolean)}
+function drawImpPrev(){const list=impItems(),dups=list.filter(x=>x.dup).length;
+  $("iPrev").innerHTML=`<tr><th>Building</th><th>Lvl</th><th>Room</th><th>Trade</th><th>Item</th><th>Status</th><th>PS #</th></tr>`+
+    list.slice(0,8).map(x=>`<tr><td>${esc(x.bldg)}</td><td>${esc(x.level)}</td><td>${esc(x.room)}</td><td>${esc(x.trade)}</td><td>${esc(x.desc).slice(0,80)}</td><td>${ST[x.status]}</td><td>${esc(x.ps)}${x.dup?" (already in list)":""}</td></tr>`).join("")+
+    (list.length>8?`<tr><td colspan="7" class="sm">…and ${list.length-8} more</td></tr>`:"");
+  const n=list.length-dups;$("iGo").textContent=`Import ${n} item${n===1?"":"s"}`+(dups?` (skip ${dups} already in list)`:"");$("iGo").disabled=!n}
+$("iGo").onclick=async()=>{if(!isGC())return;const list=impItems().filter(x=>!x.dup);if(!list.length)return;
+  const b=$("iGo");b.disabled=true;
+  const newTrades=[...new Set(list.map(x=>x.trade))].filter(t=>!allTrades().some(a=>a.toLowerCase()===t.toLowerCase()));
+  if(newTrades.length){try{await saveConfig("trades",[...customTrades(),...newTrades])}catch(e){}}
+  let ok=0;
+  for(const x of list){b.textContent=`Importing ${ok+1} of ${list.length}…`;
+    const o={bldg:x.bldg,level:x.level,room:x.room,trade:x.trade,desc:x.desc,pri:"normal",due:x.due,ps:x.ps,owner:OWNER_BY_BLDG[x.bldg],gate:"",photos:[],
+      status:x.status,createdAt:Date.now(),updatedAt:Date.now(),closedAt:x.status==="done"?Date.now():null,byName:me.name,vbyName:"",log:logAdd([],"Imported from list")};
+    try{await store.add(o);ok++}catch(e){}}
+  toast(`Imported ${ok} of ${list.length} items`);b.disabled=false;closeAll()};
+
+/* ---------- CSV ---------- */
+function exportCSV(){
+  const rows=filtered().sort((a,b)=>(a.num||9e9)-(b.num||9e9));const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const head=["Item #","ProjectSight #","Building","Level","Room","Trade","Item","Owner","Must close before","Status","Priority","Due","Added","Added by","Days open","Verified","Verified by","Photo files"];
+  const csv=[head.join(",")].concat(rows.map(i=>[tag(i),i.ps,i.bldg,i.level,i.room,i.trade,i.desc,ownerOf(i),i.gate?(GATES[i.gate]||i.gate):"",ST[i.status],i.pri==="high"?"Priority":"Normal",i.due,
+    i.createdAt?new Date(i.createdAt).toLocaleDateString():"",i.byName,i.status==="done"?"":days(i.createdAt),i.closedAt?new Date(i.closedAt).toLocaleDateString():"",i.vbyName,
+    tag(i)?photosOf(i).map((_,k)=>photoName(i,k)).join("; "):""].map(q).join(","))).join("\n");
+  saveFile(safe(S.short||"Job")+"_Work_to_Complete_"+new Date().toISOString().slice(0,10)+".csv","\ufeff"+csv,"text/csv");
+}
+
+/* ---------- photo viewer ---------- */
+let vList=[],vIdx=0,vItem=null;
+async function showV(){const m=vList.length>1;$("vPrev").hidden=!m;$("vNext").hidden=!m;
+  $("vCount").textContent=(m?`${vIdx+1} of ${vList.length}`:"")+(vItem?(m?"  ·  ":"")+photoName(vItem,vIdx):"");
+  const ref=vList[vIdx];$("vImg").src=phSrc(ref);const k=vIdx;const v=await loadPhoto(ref);if(k===vIdx){if(v)$("vImg").src=v;else $("vCount").textContent="Photo loads when you have signal"}}
+function openViewer(list,k,cap,item){if(!list.length)return;vList=list;vIdx=k||0;vItem=item&&item.num?item:null;$("vSave").hidden=!vItem;
+  $("vCap").textContent=cap||"";showV();$("viewer").classList.add("on");$("vClose").focus()}
+function closeViewer(){$("viewer").classList.remove("on");$("vImg").removeAttribute("src")}
+const step=d=>{vIdx=(vIdx+d+vList.length)%vList.length;showV()};
+$("vPrev").onclick=()=>step(-1);$("vNext").onclick=()=>step(1);$("vClose").onclick=closeViewer;
+$("vSave").onclick=async()=>{if(!vItem)return;const v=await loadPhoto(vList[vIdx]);if(v)saveFile(photoName(vItem,vIdx),dataURLtoBlob(v));else toast("Photo needs signal to download")};
+$("vImgWrap").onclick=e=>{if(e.target===$("vImgWrap"))closeViewer()};
+let tx=null;$("viewer").addEventListener("touchstart",e=>{tx=e.touches[0].clientX},{passive:true});
+$("viewer").addEventListener("touchend",e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx;tx=null;if(Math.abs(dx)>50&&vList.length>1)step(dx<0?1:-1)});
+document.addEventListener("keydown",e=>{
+  if($("viewer").classList.contains("on")){if(e.key==="Escape")closeViewer();else if(e.key==="ArrowRight")step(1);else if(e.key==="ArrowLeft")step(-1);return}
+  if(e.key==="Escape")closeAll()});
+
+/* ---------- boot ---------- */
+function readPin(){const m=(location.hash||"").match(/room=([^&]+)/);roomPin=null;
+  if(m){try{const k=decodeURIComponent(m[1]);if(k.split("|").length===3)roomPin=k}catch(e){}}}
+applySettings(cache.settings||{});
+if(JOB&&jobFromText(location.search))localStorage.setItem("wtc-lastjob",JOB);
+readPin();window.addEventListener("hashchange",()=>{readPin();render()});
+rebuild();
+if(!JOB)showJobs(true);else if(!me)showLogin();else{rememberJob();syncNow()}
+setInterval(()=>{flush();pull()},30000);
+setInterval(syncUI,60000);
+window.addEventListener("online",()=>{syncUI();setTimeout(syncNow,1500)});
+window.addEventListener("offline",syncUI);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")syncNow()});
+if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+})();
+</script>
+</body>
+</html>
