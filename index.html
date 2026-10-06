@@ -272,6 +272,15 @@ main{max-width:980px;margin:0 auto;padding:12px 12px 120px}
   <div class="btns"><button class="primary" data-close>Done</button></div>
 </div>
 
+<!-- inspection types -->
+<div class="sheet" id="gSheet" role="dialog" aria-modal="true" aria-labelledby="gTitle">
+  <h3 id="gTitle">Inspection types</h3>
+  <div class="tadd"><input id="gNew" placeholder="e.g. Fire marshal, Elevator inspection" aria-label="New inspection type"><button id="gAdd">Add</button></div>
+  <p class="note" style="margin-top:12px">Types you've added are listed below. Types from the Settings tab always show. Removing one hides it from the picker; items already tagged keep it.</p>
+  <ul class="tlist" id="gList"></ul>
+  <div class="btns"><button class="primary" data-close>Done</button></div>
+</div>
+
 <!-- owners -->
 <div class="sheet" id="oSheet" role="dialog" aria-modal="true" aria-labelledby="oTitle">
   <h3 id="oTitle">Owners</h3>
@@ -297,6 +306,7 @@ main{max-width:980px;margin:0 auto;padding:12px 12px 120px}
     <button id="mMe"><b>Sign out</b><span id="mMeTxt">Change name or site code</span></button>
     <button id="mTr" class="gc-only"><b>Trades</b><span>Add or remove companies</span></button>
     <button id="mOw" class="gc-only"><b>Owners</b><span>Add or remove supers / owners</span></button>
+    <button id="mGt" class="gc-only"><b>Inspection types</b><span>Add or remove "must close before" tags</span></button>
   </div>
   <p class="note" id="roleNote"></p>
   <div class="btns"><button class="primary" data-close>Close</button></div>
@@ -408,14 +418,11 @@ function applySettings(x){
   BASE_TRADES=[...(x.trades||[]).filter(t=>t!=="Other"),"Other"];
   OWNERS=[...(x.owners||[]).filter(o=>o!=="Unassigned"),"Unassigned"];
   OWNER_BY_BLDG=x.ownerByArea||{};
-  GATES={"":"Nothing specific"};(x.tags||[]).forEach(t=>GATES[t]=t);
   document.title=(S.short?S.short+" · ":"")+"Work to Complete";
   $("jobName").textContent=S.job||"";
   document.querySelectorAll("[data-area]").forEach(el=>el.textContent=areaWord());
   $("fB").setAttribute("aria-label",areaWord());
   keepOpts($("fB"),BLDGS,"All "+areasWord());
-  keepOpts($("fG"),[["any","Any inspection tag"],...Object.keys(GATES).filter(Boolean).map(t=>[t,t])],"All items");
-  $("fG").hidden=Object.keys(GATES).length<2;
 }
 const ST={open:"Open",wip:"Working",ready:"Ready to verify",done:"Verified"};
 const NEXT={open:["wip","Start"],wip:["ready","Mark ready"],ready:["done","Verify"],done:["open","Reopen"]};
@@ -443,6 +450,12 @@ const isGC=()=>role()==="gc";
 const canWrite=()=>role()==="gc"||role()==="sub";
 const customTrades=()=>cache.config.trades||[];
 const customOwners=()=>cache.config.owners||[];
+const customTags=()=>cache.config.tags||[];
+function allTags(){const b=(S.tags||[]).slice();customTags().forEach(t=>{if(!b.some(x=>x.toLowerCase()===t.toLowerCase()))b.push(t)});return b}
+function refreshGates(){GATES={"":"Nothing specific"};allTags().forEach(t=>GATES[t]=t);
+  items.forEach(i=>{if(i.gate&&!GATES[i.gate])GATES[i.gate]=i.gate});
+  keepOpts($("fG"),[["any","Any inspection tag"],...Object.keys(GATES).filter(Boolean).map(t=>[t,t])],"All items");
+  $("fG").hidden=Object.keys(GATES).length<2&&!isGC()}
 
 /* ---------- helpers ---------- */
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -597,7 +610,7 @@ async function addTo(key,name,all,quiet){name=(name||"").trim().replace(/\s+/g,"
   const hit=all().find(t=>t.toLowerCase()===name.toLowerCase());if(hit)return hit;
   try{await saveConfig(key,[...(cache.config[key]||[]),name]);if(!quiet)toast("Added "+name);return name}
   catch(e){toast(e.code==="offline"||e.code==="timeout"?"Adding to the list needs signal — try again in coverage":`Only ${S.gc} staff can change the list`);return null}}
-const addTrade=(n,q)=>addTo("trades",n,allTrades,q),addOwner=n=>addTo("owners",n,allOwners);
+const addTrade=(n,q)=>addTo("trades",n,allTrades,q),addOwner=n=>addTo("owners",n,allOwners),addTag=n=>addTo("tags",n,allTags);
 /* multi-select chips: tap to toggle */
 function mseg(el,arr,sel,onChange,addLabel,onAdd){
   el.innerHTML=arr.map(v=>`<button type="button" data-v="${esc(v)}" aria-pressed="${sel.includes(v)}">${esc(v)}</button>`).join("")+(addLabel?`<button type="button" data-add="1" style="border-style:dashed">${esc(addLabel)}</button>`:"");
@@ -618,6 +631,7 @@ const byLoc=(a,b)=>BLDGS.indexOf(a.bldg)-BLDGS.indexOf(b.bldg)||String(a.level).
 function render(){
   keepOpts($("fT"),usedPlus(allTrades(),"trade"),"All trades");
   keepOpts($("fO"),usedPlus(allOwners(),"owner"),"All owners");
+  refreshGates();
   document.body.classList.toggle("sub",role()==="sub");document.body.classList.toggle("ro",!canWrite());
   if(roomPin){const [b,l,r]=roomPin.split("|");$("pin").hidden=false;$("pinTxt").textContent=`${b} · Level ${l} · ${r||"General"}`}else $("pin").hidden=true;
   const base=filtered();
@@ -654,7 +668,7 @@ function card(i,showLoc){
 }
 
 /* ---------- sheets ---------- */
-const SHEETS=["jSheet","shSheet","sheet","oSheet","tSheet","mSheet","rSheet","qSheet","vrSheet","iSheet","lSheet"];
+const SHEETS=["jSheet","shSheet","sheet","gSheet","oSheet","tSheet","mSheet","rSheet","qSheet","vrSheet","iSheet","lSheet"];
 function openS(id){SHEETS.forEach(s=>$(s).classList.toggle("on",s===id));$("scrim").classList.add("on")}
 function closeAll(){if(($("lSheet").classList.contains("on")&&!me)||($("jSheet").classList.contains("on")&&!JOB))return;SHEETS.forEach(s=>$(s).classList.remove("on"));$("scrim").classList.remove("on");editing=null}
 document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeAll);
@@ -677,7 +691,7 @@ function openItem(item){
   drawTrades();
   $("sR").value=draft.room||"";rx();$("sD").value=draft.desc;$("sDue").value=draft.due||"";$("sPS").value=draft.ps||"";
   drawOwner();
-  seg($("sG"),Object.keys(GATES),draft.gate||"",v=>draft.gate=v,Object.values(GATES));
+  drawGates();
   seg($("sP"),["normal","high"],draft.pri,v=>draft.pri=v,["Normal","Priority"]);
   const sts=isGC()?Object.keys(ST):["open","wip","ready"];
   seg($("sS"),sts,draft.status,v=>draft.status=v,sts.map(k=>ST[k]));
@@ -686,6 +700,11 @@ function openItem(item){
   drawHist(item);openS("sheet");
   setTimeout(()=>$(item||roomPin?"sD":"sR").focus(),230);
 }
+function drawGates(){const k=["",...allTags()];if(draft.gate&&!k.includes(draft.gate))k.push(draft.gate);
+  seg($("sG"),k,draft.gate||"",v=>draft.gate=v,k.map(x=>x||"Nothing specific"));
+  if(isGC()){const b=document.createElement("button");b.type="button";b.textContent="+ Add inspection type";b.style.borderStyle="dashed";
+    b.onclick=async e=>{e.stopPropagation();const n=prompt("New inspection type (e.g. Fire marshal walk)");const added=n?await addTag(n):null;if(added)draft.gate=added;drawGates()};
+    $("sG").appendChild(b)}}
 function drawOwner(){const a=allOwners();draft.owners.forEach(o=>{if(!a.includes(o))a.splice(a.length-1,0,o)});
   mseg($("sO"),a,draft.owners,()=>{draft.ownerTouched=true;
       if(draft.owners.length>1&&draft.owners.includes("Unassigned")){draft.owners.splice(draft.owners.indexOf("Unassigned"),1);drawOwner()}},
@@ -765,6 +784,7 @@ function wireList(key,inp,addBtn,listEl,adder,label){
 }
 wireList("trades",$("tNew"),$("tAdd"),$("tList"),addTrade,"trade");
 wireList("owners",$("oNew"),$("oAdd"),$("oList"),addOwner,"owner");
+wireList("tags",$("gNew"),$("gAdd"),$("gList"),addTag,"inspection type");
 
 /* ---------- more menu ---------- */
 $("moreBtn").onclick=()=>{
@@ -773,6 +793,7 @@ $("moreBtn").onclick=()=>{
   $("roleNote").textContent=role()==="sub"?`Trade partner access: you can add items and move them to Ready to verify. ${S.gc} verifies and closes.`:"";
   openS("mSheet")};
 $("mTr").onclick=()=>{listUI("trades",$("tList"));$("tNew").value="";openS("tSheet");setTimeout(()=>$("tNew").focus(),230)};
+$("mGt").onclick=()=>{listUI("tags",$("gList"));$("gNew").value="";openS("gSheet");setTimeout(()=>$("gNew").focus(),230)};
 $("mOw").onclick=()=>{listUI("owners",$("oList"));$("oNew").value="";openS("oSheet");setTimeout(()=>$("oNew").focus(),230)};
 $("mPh").onclick=photoReport;$("mQR").onclick=openQR;$("mRep").onclick=openReport;$("mImp").onclick=openImport;$("mCsv").onclick=exportCSV;
 $("mZip").onclick=()=>{if(me&&me.folderUrl)window.open(me.folderUrl,"_blank");else toast("Sign out and back in with signal to load the folder link")};
