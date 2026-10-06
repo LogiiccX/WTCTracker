@@ -141,6 +141,9 @@ main{max-width:980px;margin:0 auto;padding:12px 12px 120px}
 .await{align-self:center;margin:8px 10px 8px 0;font-size:12.5px;color:var(--muted);min-width:92px;text-align:center}
 .pin{display:flex;align-items:center;gap:8px;background:var(--navy);color:#fff;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:14px}
 .pin[hidden]{display:none}
+.rwrap{position:relative}.rwrap input{padding-right:44px}
+.clr{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;border-radius:8px;background:var(--chip);color:var(--ink);font-size:20px;line-height:1}
+.clr[hidden]{display:none}
 .obar{background:var(--brass)}
 .phimg{background:var(--chip)}
 .obar button{border-color:#fff}
@@ -189,6 +192,12 @@ main{max-width:980px;margin:0 auto;padding:12px 12px 120px}
   .qrc img{width:48mm;height:48mm}
   .qrc h3{margin:3mm 0 1mm;font:700 20pt "Barlow Semi Condensed",Arial,sans-serif}
   .qrc p{margin:0;font-size:9pt}
+  .rp{border:1px solid #000;padding:3mm 4mm;margin-bottom:4mm;page-break-inside:avoid}
+  .rp .rh{display:flex;justify-content:space-between;gap:4mm;font-size:9.5pt}
+  .rp .rd{font-size:11.5pt;font-weight:600;margin:1.5mm 0 2mm}
+  .rp .rimgs{display:flex;gap:3mm;flex-wrap:wrap}
+  .rp .rimgs img{width:58mm;height:44mm;object-fit:cover;border:0.5px solid #000}
+  .rp .nop{font-size:9pt;font-style:italic}
 }
 </style>
 </head>
@@ -230,11 +239,11 @@ main{max-width:980px;margin:0 auto;padding:12px 12px 120px}
   <div class="f"><span class="lab" data-area>Building</span><div class="seg" id="sB"></div></div>
   <div class="row2">
     <div class="f"><label for="sL">Level</label><select id="sL"></select></div>
-    <div class="f"><label for="sR">Room / area</label><input id="sR" list="roomList" placeholder="e.g. 3104 or Corridor C"><datalist id="roomList"></datalist></div>
+    <div class="f"><label for="sR">Room / area</label><div class="rwrap"><input id="sR" list="roomList" placeholder="e.g. 3104 or Corridor C" autocomplete="off"><button type="button" class="clr" id="sRx" aria-label="Clear room">×</button></div><datalist id="roomList"></datalist></div>
   </div>
-  <div class="f"><label for="sT">Trade responsible</label><select id="sT"></select></div>
+  <div class="f"><span class="lab">Trades responsible <span style="font-weight:400">— tap all that apply</span></span><div class="seg" id="sT"></div></div>
   <div class="f"><label for="sD">What needs done</label><textarea id="sD" placeholder="e.g. Touch up paint at door frame, north wall"></textarea></div>
-  <div class="f"><span class="lab">Owner (building super)</span><div class="seg" id="sO"></div></div>
+  <div class="f"><span class="lab">Owners <span style="font-weight:400">— tap all that apply</span></span><div class="seg" id="sO"></div></div>
   <div class="f"><span class="lab">Must be closed before</span><div class="seg" id="sG"></div></div>
   <div class="row2">
     <div class="f"><span class="lab">Priority</span><div class="seg" id="sP"></div></div>
@@ -248,6 +257,7 @@ main{max-width:980px;margin:0 auto;padding:12px 12px 120px}
   <div class="f" id="sStatusWrap" hidden><span class="lab">Status</span><div class="seg" id="sS"></div></div>
   <div class="btns">
     <button class="primary" id="sSave">Add item</button>
+    <button class="ghost" id="sShare" hidden>Share</button>
     <button class="danger gc-only" id="sDel" hidden>Delete</button>
   </div>
   <div class="hist" id="sHist"></div>
@@ -278,6 +288,7 @@ main{max-width:980px;margin:0 auto;padding:12px 12px 120px}
     <button id="mQR"><b>Room QR codes</b><span>Print a code for each room door</span></button>
     <button id="mRep"><b>Verified report</b><span>What was closed, when, by whom</span></button>
     <button id="mImp" class="gc-only"><b>Import list</b><span>Excel or CSV from ProjectSight</span></button>
+    <button id="mPh"><b>Photo report</b><span>Items with their photos — print or save as PDF to send</span></button>
     <button id="mCsv"><b>Export CSV</b><span>Current filter, with photo file names</span></button>
     <button id="mZip" class="gc-only"><b>Photo folder</b><span>All photos in Google Drive, named by item</span></button>
     <button id="mGs" class="gc-only"><b>Google Sheet</b><span>The live list, ready for ProjectSight</span></button>
@@ -444,7 +455,9 @@ const tagOrPending=i=>tag(i)||"Not sent yet";
 const safe=v=>String(v||"").replace(/[^A-Za-z0-9-]+/g,"");
 const photosOf=i=>Array.isArray(i.photos)?i.photos.filter(Boolean):[];
 const photoName=(i,k)=>`${tag(i)}${i.ps?"_PS-"+safe(i.ps):""}_${k+1}.jpg`;
-const ownerOf=i=>i.owner||OWNER_BY_BLDG[i.bldg]||"Unassigned";
+const tradesOf=i=>Array.isArray(i.trades)&&i.trades.length?i.trades:(i.trade?[i.trade]:[]);
+const ownersOf=i=>Array.isArray(i.owners)&&i.owners.length?i.owners:[i.owner||OWNER_BY_BLDG[i.bldg]||"Unassigned"];
+const ownerOf=i=>ownersOf(i).join(", ");
 const roomKey=(b,l,r)=>[b,l,r].join("|");
 const newId=()=>"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no({code:"timeout"}),ms))]);
@@ -578,20 +591,26 @@ function signOut(bad){
 /* ---------- trades / owners (shared config) ---------- */
 function allTrades(){const b=BASE_TRADES.filter(t=>t!=="Other");return [...b,...customTrades().filter(t=>!b.includes(t)),"Other"]}
 function allOwners(){const b=OWNERS.filter(o=>o!=="Unassigned");return [...b,...customOwners().filter(o=>!b.includes(o)),"Unassigned"]}
-function usedPlus(base,field){const a=base.slice();items.forEach(i=>{const v=field==="owner"?ownerOf(i):i[field];if(v&&!a.includes(v))a.splice(a.length-1,0,v)});return a}
+function usedPlus(base,field){const a=base.slice();items.forEach(i=>(field==="owner"?ownersOf(i):tradesOf(i)).forEach(v=>{if(v&&!a.includes(v))a.splice(a.length-1,0,v)}));return a}
 async function saveConfig(key,list){const j=await api("config",{key,list});cache.config=j.config;saveCache();render()}
 async function addTo(key,name,all,quiet){name=(name||"").trim().replace(/\s+/g," ");if(!name)return null;
   const hit=all().find(t=>t.toLowerCase()===name.toLowerCase());if(hit)return hit;
   try{await saveConfig(key,[...(cache.config[key]||[]),name]);if(!quiet)toast("Added "+name);return name}
   catch(e){toast(e.code==="offline"||e.code==="timeout"?"Adding to the list needs signal — try again in coverage":`Only ${S.gc} staff can change the list`);return null}}
 const addTrade=(n,q)=>addTo("trades",n,allTrades,q),addOwner=n=>addTo("owners",n,allOwners);
-function fillSheetTrades(val){const a=allTrades();if(val&&val!=="__new"&&!a.includes(val))a.splice(a.length-1,0,val);
-  $("sT").innerHTML=a.map(v=>`<option>${esc(v)}</option>`).join("")+(isGC()?'<option value="__new">+ Add new trade…</option>':"");$("sT").value=(val&&val!=="__new")?val:a[0];$("sT").dataset.prev=$("sT").value}
+/* multi-select chips: tap to toggle */
+function mseg(el,arr,sel,onChange,addLabel,onAdd){
+  el.innerHTML=arr.map(v=>`<button type="button" data-v="${esc(v)}" aria-pressed="${sel.includes(v)}">${esc(v)}</button>`).join("")+(addLabel?`<button type="button" data-add="1" style="border-style:dashed">${esc(addLabel)}</button>`:"");
+  el.onclick=async e=>{const b=e.target.closest("button");if(!b)return;
+    if(b.dataset.add){await onAdd();return}
+    const v=b.dataset.v,i=sel.indexOf(v);if(i>=0)sel.splice(i,1);else sel.push(v);b.setAttribute("aria-pressed",i<0);onChange&&onChange()}}
+function drawTrades(){const a=allTrades();draft.trades.forEach(t=>{if(!a.includes(t))a.splice(a.length-1,0,t)});
+  mseg($("sT"),a,draft.trades,null,isGC()?"+ Add trade":"",async()=>{const n=prompt("New trade or company name");const added=n?await addTrade(n):null;if(added&&!draft.trades.includes(added))draft.trades.push(added);drawTrades()})}
 
 /* ---------- filtering + render ---------- */
 function filtered(ignoreTrade){
   const b=$("fB").value,t=$("fT").value,o=$("fO").value,g=$("fG").value,q=$("fQ").value.trim().toLowerCase();
-  return items.filter(i=>(!b||i.bldg===b)&&(ignoreTrade||!t||i.trade===t)&&(!o||ownerOf(i)===o)&&(!g||(g==="any"?!!i.gate:i.gate===g))
+  return items.filter(i=>(!b||i.bldg===b)&&(ignoreTrade||!t||tradesOf(i).includes(t))&&(!o||ownersOf(i).includes(o))&&(!g||(g==="any"?!!i.gate:i.gate===g))
     &&(!roomPin||roomKey(i.bldg,i.level,i.room)===roomPin)
     &&(!q||(i.room+" "+i.desc+" "+i.level+" "+tag(i)+" ps"+(i.ps||"")).toLowerCase().includes(q)));
 }
@@ -647,16 +666,16 @@ function openItem(item){
   editing=item?item.id:null;
   const last=lsGet("wtc-last",{});
   let pb=null,pl=null,pr=null;if(roomPin)[pb,pl,pr]=roomPin.split("|");
-  draft=item?Object.assign({},item):{bldg:pb||last.bldg||$("fB").value||BLDGS[0],level:pl||last.level||"1",room:pr??last.room??"",trade:last.trade||$("fT").value||BASE_TRADES[0],desc:"",pri:"normal",due:"",gate:"",status:"open"};
+  draft=item?Object.assign({},item):{bldg:pb||last.bldg||$("fB").value||BLDGS[0],level:pl||last.level||"1",room:pr??last.room??"",trades:Array.isArray(last.trades)&&last.trades.length?last.trades.slice():[$("fT").value||BASE_TRADES[0]],desc:"",pri:"normal",due:"",gate:"",status:"open"};
   draft.photos=item?photosOf(item).slice():[];
-  draft.owner=item?ownerOf(item):OWNER_BY_BLDG[draft.bldg];draft.ownerTouched=!!(item&&item.owner);
+  draft.trades=item?tradesOf(item).slice():draft.trades;draft.owners=item?ownersOf(item).slice():[OWNER_BY_BLDG[draft.bldg]||"Unassigned"];draft.ownerTouched=!!item;
   $("sTitle").textContent=item?("Edit "+tagOrPending(item)):"New item";
   $("sSave").textContent=item?"Save changes":"Add item";
-  $("sDel").hidden=!item||!isGC();$("sStatusWrap").hidden=!item;
-  seg($("sB"),BLDGS,draft.bldg,v=>{draft.bldg=v;if(!draft.ownerTouched){draft.owner=OWNER_BY_BLDG[v];drawOwner()}});
+  $("sDel").hidden=!item||!isGC();$("sShare").hidden=!item;$("sStatusWrap").hidden=!item;
+  seg($("sB"),BLDGS,draft.bldg,v=>{draft.bldg=v;if(!draft.ownerTouched){draft.owners.splice(0,draft.owners.length,OWNER_BY_BLDG[v]||"Unassigned");drawOwner()}});
   opts($("sL"),LEVELS);$("sL").value=draft.level;
-  fillSheetTrades(draft.trade);
-  $("sR").value=draft.room||"";$("sD").value=draft.desc;$("sDue").value=draft.due||"";$("sPS").value=draft.ps||"";
+  drawTrades();
+  $("sR").value=draft.room||"";rx();$("sD").value=draft.desc;$("sDue").value=draft.due||"";$("sPS").value=draft.ps||"";
   drawOwner();
   seg($("sG"),Object.keys(GATES),draft.gate||"",v=>draft.gate=v,Object.values(GATES));
   seg($("sP"),["normal","high"],draft.pri,v=>draft.pri=v,["Normal","Priority"]);
@@ -667,11 +686,10 @@ function openItem(item){
   drawHist(item);openS("sheet");
   setTimeout(()=>$(item||roomPin?"sD":"sR").focus(),230);
 }
-function drawOwner(){const a=allOwners();const o=a.includes(draft.owner)?a:[...a.slice(0,-1),draft.owner,"Unassigned"];
-  seg($("sO"),o,draft.owner,v=>{draft.owner=v;draft.ownerTouched=true});
-  if(isGC()){const b=document.createElement("button");b.type="button";b.textContent="+ Add owner";b.style.borderStyle="dashed";
-    b.onclick=async e=>{e.stopPropagation();const n=prompt("Owner name (super or person responsible)");const added=n?await addOwner(n):null;if(added){draft.owner=added;draft.ownerTouched=true}drawOwner()};
-    $("sO").appendChild(b)}}
+function drawOwner(){const a=allOwners();draft.owners.forEach(o=>{if(!a.includes(o))a.splice(a.length-1,0,o)});
+  mseg($("sO"),a,draft.owners,()=>{draft.ownerTouched=true;
+      if(draft.owners.length>1&&draft.owners.includes("Unassigned")){draft.owners.splice(draft.owners.indexOf("Unassigned"),1);drawOwner()}},
+    isGC()?"+ Add owner":"",async()=>{const n=prompt("Owner name (super or person responsible)");const added=n?await addOwner(n):null;if(added&&!draft.owners.includes(added)){draft.owners.push(added);draft.ownerTouched=true}drawOwner()})}
 function drawHist(item){
   if(!item){$("sHist").innerHTML="";return}
   const log=Array.isArray(item.log)&&item.log.length?item.log:[{t:item.createdAt,by:item.byName,a:"Added"}];
@@ -687,21 +705,22 @@ $("pStrip").onclick=e=>{const rm=e.target.closest("[data-rm]");
 $("sFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{
   let q=.72,max=1400,out;do{const s=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);out=c.toDataURL("image/jpeg",q);max-=200;q-=.06}while(out.length>90000&&max>300);
   if(draft.photos.length<MAXP){draft.photos.push(out);drawStrip()}};img.src=r.result};r.readAsDataURL(f);e.target.value=""};
-$("sT").onchange=async()=>{const sel=$("sT");if(sel.value!=="__new"){sel.dataset.prev=sel.value;return}
-  const n=prompt("New trade or company name");const added=n?await addTrade(n):null;fillSheetTrades(added||sel.dataset.prev)};
+
 
 $("sSave").onclick=async()=>{
   const d=$("sD").value.trim();if(!d){$("sD").focus();toast("Describe what needs done");return}
-  const o={bldg:draft.bldg,level:$("sL").value,room:$("sR").value.trim(),trade:$("sT").value,desc:d,pri:draft.pri,due:$("sDue").value,ps:$("sPS").value.trim(),
-    owner:draft.owner,gate:draft.gate||"",photos:draft.photos.slice(0,MAXP),updatedAt:Date.now()};
-  lsSet("wtc-last",{bldg:o.bldg,level:o.level,room:o.room,trade:o.trade});
+  if(!draft.trades.length){toast("Pick at least one trade");$("sT").scrollIntoView({block:"center"});return}
+  const owners=draft.owners.length?draft.owners.slice():["Unassigned"];
+  const o={bldg:draft.bldg,level:$("sL").value,room:$("sR").value.trim(),trades:draft.trades.slice(),trade:draft.trades.join(", "),desc:d,pri:draft.pri,due:$("sDue").value,ps:$("sPS").value.trim(),
+    owners,owner:owners.join(", "),gate:draft.gate||"",photos:draft.photos.slice(0,MAXP),updatedAt:Date.now()};
+  lsSet("wtc-last",{bldg:o.bldg,level:o.level,room:o.room,trades:o.trades});
   const btn=$("sSave");btn.disabled=true;
   try{
     if(editing){const prev=items.find(i=>i.id===editing);let log=prev.log;
       if(!Array.isArray(log)||!log.length)log=[{t:prev.createdAt,by:prev.byName||"",a:"Added"}];
       if(draft.status!==prev.status){o.status=draft.status;log=logAdd(log,"Status → "+ST[draft.status]);
         if(o.status==="done"){o.closedAt=Date.now();o.vbyName=me.name}else{o.closedAt=null;o.vbyName=""}}
-      const changed=["desc","room","level","bldg","trade","owner","gate","pri","due","ps"].filter(k=>(o[k]||"")!==(prev[k]||"")&&!(k==="owner"&&o.owner===ownerOf(prev)));
+      const changed=["desc","room","level","bldg","trade","owner","gate","pri","due","ps"].filter(k=>k==="trade"?o.trade!==tradesOf(prev).join(", "):k==="owner"?o.owner!==ownerOf(prev):(o[k]||"")!==(prev[k]||""));
       if(changed.length)log=logAdd(log,"Edited "+changed.map(k=>({desc:"description",ps:"ProjectSight #",pri:"priority"}[k]||k)).join(", "));
       const pp=photosOf(prev);if(pp.length!==o.photos.length||pp.some((p,k)=>p!==o.photos[k]))log=logAdd(log,"Photos updated");else delete o.photos;
       o.log=log;const r=await store.update(editing,o);toast(r==="queued"?"No signal — saved on this phone, will send later":"Saved");closeAll()}
@@ -755,7 +774,7 @@ $("moreBtn").onclick=()=>{
   openS("mSheet")};
 $("mTr").onclick=()=>{listUI("trades",$("tList"));$("tNew").value="";openS("tSheet");setTimeout(()=>$("tNew").focus(),230)};
 $("mOw").onclick=()=>{listUI("owners",$("oList"));$("oNew").value="";openS("oSheet");setTimeout(()=>$("oNew").focus(),230)};
-$("mQR").onclick=openQR;$("mRep").onclick=openReport;$("mImp").onclick=openImport;$("mCsv").onclick=exportCSV;
+$("mPh").onclick=photoReport;$("mQR").onclick=openQR;$("mRep").onclick=openReport;$("mImp").onclick=openImport;$("mCsv").onclick=exportCSV;
 $("mZip").onclick=()=>{if(me&&me.folderUrl)window.open(me.folderUrl,"_blank");else toast("Sign out and back in with signal to load the folder link")};
 $("mGs").onclick=()=>{if(me&&me.sheetUrl)window.open(me.sheetUrl,"_blank");else toast("Sign out and back in with signal to load the sheet link")};
 $("mMe").onclick=()=>signOut(false);
@@ -779,8 +798,8 @@ $("shPrint").onclick=()=>{const cv=$("shQR").querySelector("canvas");if(!cv){toa
 
 /* ---------- trade rollup ---------- */
 function rollupData(){
-  const rows={};filtered(true).forEach(i=>{const r=rows[i.trade]=rows[i.trade]||{trade:i.trade,open:0,wip:0,ready:0,old7:0,oldest:null};
-    if(i.status==="done")return;r[i.status]++;if(days(i.createdAt)>7)r.old7++;if(!r.oldest||(i.createdAt||0)<(r.oldest.createdAt||0))r.oldest=i});
+  const rows={};filtered(true).forEach(i=>tradesOf(i).forEach(tr=>{const r=rows[tr]=rows[tr]||{trade:tr,open:0,wip:0,ready:0,old7:0,oldest:null};
+    if(i.status==="done")return;r[i.status]++;if(days(i.createdAt)>7)r.old7++;if(!r.oldest||(i.createdAt||0)<(r.oldest.createdAt||0))r.oldest=i}));
   return Object.values(rows).filter(r=>r.open+r.wip+r.ready>0).sort((a,b)=>(b.open+b.wip+b.ready)-(a.open+a.wip+a.ready));
 }
 function filterDesc(){const p=[];if(roomPin)p.push(roomPin.split("|").join(" · "));if($("fB").value)p.push($("fB").value);if($("fO").value)p.push("Owner: "+$("fO").value);if($("fG").value)p.push($("fG").selectedOptions[0].text);return p.length?p.join(" · "):"All buildings"}
@@ -892,12 +911,54 @@ $("iGo").onclick=async()=>{if(!isGC())return;const list=impItems().filter(x=>!x.
   if(newTrades.length){try{await saveConfig("trades",[...customTrades(),...newTrades])}catch(e){}}
   let ok=0;
   for(const x of list){b.textContent=`Importing ${ok+1} of ${list.length}…`;
-    const o={bldg:x.bldg,level:x.level,room:x.room,trade:x.trade,desc:x.desc,pri:"normal",due:x.due,ps:x.ps,owner:OWNER_BY_BLDG[x.bldg],gate:"",photos:[],
+    const o={bldg:x.bldg,level:x.level,room:x.room,trades:[x.trade],trade:x.trade,owners:[OWNER_BY_BLDG[x.bldg]||"Unassigned"],desc:x.desc,pri:"normal",due:x.due,ps:x.ps,owner:OWNER_BY_BLDG[x.bldg],gate:"",photos:[],
       status:x.status,createdAt:Date.now(),updatedAt:Date.now(),closedAt:x.status==="done"?Date.now():null,byName:me.name,vbyName:"",log:logAdd([],"Imported from list")};
     try{await store.add(o);ok++}catch(e){}}
   toast(`Imported ${ok} of ${list.length} items`);b.disabled=false;closeAll()};
 
 /* ---------- CSV ---------- */
+/* ---------- room field: one tap to clear / replace ---------- */
+const rx=()=>{$("sRx").hidden=!$("sR").value};
+$("sR").addEventListener("input",rx);
+$("sR").addEventListener("focus",()=>{setTimeout(()=>{try{$("sR").select()}catch(e){}},0)});
+$("sRx").onclick=()=>{$("sR").value="";rx();$("sR").focus()};
+
+/* ---------- photos with items: report + share ---------- */
+async function photosFor(i){return Promise.all(photosOf(i).map(r=>loadPhoto(r)))}
+function curList(){const ageSort=$("fS").value==="age";const l=filtered().filter(i=>view==="active"?i.status!=="done":i.status===view);return l.sort(ageSort?(a,b)=>(a.createdAt||0)-(b.createdAt||0):byLoc)}
+async function photoReport(){
+  const list=curList();if(!list.length){toast("No items in the current view");return}
+  const withP=list.filter(i=>photosOf(i).length);
+  const only=withP.length&&withP.length<list.length?confirm(`${withP.length} of ${list.length} items have photos.\n\nOK = only items with photos\nCancel = all ${list.length} items`):false;
+  const rows=only?withP:list;
+  toast("Loading photos…");
+  let missing=0;const blocks=[];
+  for(const i of rows){const ps=await photosFor(i);missing+=ps.filter(x=>!x).length;
+    blocks.push(`<div class="rp"><div class="rh"><b>${esc(tagOrPending(i))}${i.ps?" · PS "+esc(i.ps):""}</b><span>${esc(i.bldg)} · L${esc(i.level)} · ${esc(i.room||"General")}</span><span>${esc(i.trade)} · ${ST[i.status]}${i.gate?" · "+esc(GATES[i.gate]||i.gate):""}</span></div>
+      <div class="rd">${esc(i.desc)}${i.pri==="high"?" (PRIORITY)":""}</div>
+      ${ps.length?`<div class="rimgs">${ps.map(src=>src?`<img src="${src}" alt="">`:`<span class="nop">[photo not loaded — needs signal]</span>`).join("")}</div>`:`<span class="nop">No photo</span>`}</div>`)}
+  $("printArea").innerHTML=`<div><div class="ph"><h2>Photo report</h2><div>${esc(S.short||S.job)} · Work to Complete<br>${esc(filterDesc())} · ${rows.length} items<br>Printed ${new Date().toLocaleString()}</div></div>${blocks.join("")}</div>`;
+  if(missing)toast(`${missing} photo(s) couldn't load — get to signal for a complete report`);
+  closeAll();setTimeout(()=>window.print(),300);
+}
+$("sShare").onclick=async()=>{
+  const i=items.find(x=>x.id===editing);if(!i)return;
+  const text=`${tagOrPending(i)}${i.ps?" (PS "+i.ps+")":""} — ${i.bldg} · Level ${i.level} · ${i.room||"General"}\n${i.trade} · ${ST[i.status]}${i.pri==="high"?" · PRIORITY":""}${i.due?" · Due "+i.due:""}\n${i.desc}\n— ${S.short||S.job} Work to Complete`;
+  const b=$("sShare");b.disabled=true;b.textContent="Preparing…";
+  try{
+    const ps=(await photosFor(i)).filter(Boolean);
+    const files=ps.map((src,k)=>new File([dataURLtoBlob(src)],photoName(i,k)||`photo_${k+1}.jpg`,{type:"image/jpeg"}));
+    if(navigator.share&&(!files.length||(navigator.canShare&&navigator.canShare({files})))){
+      await navigator.share(files.length?{text,files}:{text});
+    }else{
+      try{await navigator.clipboard.writeText(text)}catch(e){}
+      files.forEach(f=>saveFile(f.name,f));
+      toast(files.length?"Item text copied and photos downloaded — attach them to your email or text":"Item text copied — paste it into your email or text");
+    }
+  }catch(e){if(e&&e.name!=="AbortError")toast("Couldn't share — photos may need signal")}
+  b.disabled=false;b.textContent="Share";
+};
+
 function exportCSV(){
   const rows=filtered().sort((a,b)=>(a.num||9e9)-(b.num||9e9));const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   const head=["Item #","ProjectSight #","Building","Level","Room","Trade","Item","Owner","Must close before","Status","Priority","Due","Added","Added by","Days open","Verified","Verified by","Photo files"];
